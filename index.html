@@ -1096,8 +1096,10 @@ async function goTo(page){
 // HELPERS
 // ══════════════════════════════════════
 function myBks(){
-  // SE: own bookings excluding Lost (unless explicitly filtered)
-  if(curRole==='se') return DB.bookings.filter(b=>b.se===curUser && b.deal!=='Lost');
+  // SE: own bookings + Management bookings visible to all SEs, exclude Lost by default
+  if(curRole==='se') return DB.bookings.filter(b=>
+    (b.se===curUser || b.se==='Management') && b.deal!=='Lost'
+  );
   if(curRole==='pg') return DB.bookings.filter(b=>b.pg_assigned===curUser);
   return DB.bookings; // sa, admin, ss see all (including Lost for review)
 }
@@ -1627,7 +1629,7 @@ bookings(){
   </div>
   <div class="card" style="overflow:hidden">
     <table class="tbl" id="bks-tbl" style="width:100%;table-layout:auto">
-      <thead id="bks-thead"><tr><th>ID</th><th>Customer</th><th>Model</th>${showSE?'<th>SE</th>':''}<th>Deal Stage</th><th>PDI Stage</th><th>Delivery</th><th>Actions</th></tr></thead>
+      <thead id="bks-thead"><tr><th>VSB</th><th>Customer</th><th>Model / Year</th>${showSE?'<th>SE</th>':''}<th>Deal Stage</th><th>PDI Stage</th><th>Delivery</th><th>Actions</th></tr></thead>
       <tbody id="bks-body">${bks.map(b=>bRow(b)).join('')}</tbody>
     </table>
   </div>
@@ -2596,7 +2598,14 @@ async function doImport(type){
           model:         isAGMC ? (r['Vehicle Description']||r['Model']||'').trim() : (r.model||''),
           color:         tx(isAGMC ? r['Colour']      : r.color),
           vin:           tx(isAGMC ? r['VIN']         : r.vin),
-          se:            (isAGMC ? (r['Sales Exec']||'').trim() : (r.se||''))||'Unassigned',
+          se:            (()=>{
+            const VALID_SES = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
+            const raw = isAGMC ? (r['Sales Exec']||'').trim() : (r.se||'');
+            if(!raw) return 'Unassigned';
+            if(VALID_SES.includes(raw)) return raw;
+            if(raw==='Management') return 'Management'; // visible to all SEs
+            return 'Unassigned'; // any unknown SE maps to Unassigned
+          })(),
           date:          isAGMC ? (parseDate(r['Date Reserved'])||new Date().toISOString().split('T')[0]) : (r.date||new Date().toISOString().split('T')[0]),
           deal:          isAGMC ? dealStage : (r.deal||'Finance Pending'),
           pdi:           parseInt(r.pdi)||0,
@@ -2608,6 +2617,11 @@ async function doImport(type){
           flowers:       r.flowers==='true'||r.flowers==='Yes'||false,
           notes:         tx(isAGMC ? (r['Vehicle Notes']||r['Cust ref']||'') : (r.notes||''))?.substring(0,500)||null,
           view_req:      false,
+          deposit:       isAGMC ? (parseInt((r['Deposit']||'0').replace(/[^0-9]/g,''))||0) : (parseInt(r.deposit)||0),
+          model_year:    tx(isAGMC ? r['MY']       : r.model_year),
+          trim:          tx(isAGMC ? r['Trim']      : r.trim),
+          vsb_no:        tx(isAGMC ? r['VSB No']    : r.vsb_no),
+          bank_name:     tx(isAGMC ? r['Bank Name'] : r.bank_name),
         };
       });
     } else {
@@ -2829,7 +2843,20 @@ function openBkModal(id){
   const b=DB.bookings.find(x=>x.id===id); if(!b) return;
   openM(`${b.id} — ${b.customer}`,`
     <div class="fr c2"><div class="fg"><label>Customer</label><div style="font-size:14px;font-weight:700">${b.customer}</div></div><div class="fg"><label>Model</label><div style="font-size:13px;font-weight:600;color:var(--red)">${b.model}</div></div></div>
-    <div class="fr c3"><div class="fg"><label>Color</label><div>${b.color}</div></div><div class="fg"><label>VIN</label><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)">${b.vin}</div></div><div class="fg"><label>SE</label><div>${b.se}</div></div></div>
+    <div class="fr c3">
+      <div class="fg"><label>Color</label><div>${b.color||'—'}</div></div>
+      <div class="fg"><label>VIN</label><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)">${b.vin||'—'}</div></div>
+      <div class="fg"><label>SE</label><div>${b.se}</div></div>
+    </div>
+    <div class="fr c3">
+      <div class="fg"><label>VSB No.</label><div style="font-family:'Space Mono',monospace;font-size:12px">${b.vsb_no||b.id||'—'}</div></div>
+      <div class="fg"><label>Model Year</label><div>${b.model_year||'—'}</div></div>
+      <div class="fg"><label>Trim</label><div style="font-size:12px">${b.trim||'—'}</div></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Deposit</label><div style="font-size:13px;font-weight:600;color:var(--green)">${b.deposit?'AED '+Number(b.deposit).toLocaleString():'—'}</div></div>
+      <div class="fg"><label>Bank / Finance</label><div>${b.bank_name||'Cash'}</div></div>
+    </div>
     <hr class="dv"/>
     <div class="fr c2"><div class="fg"><label>Deal Stage</label><div style="margin-top:3px">${dealBadge(b.deal)}</div></div><div class="fg"><label>Delivery</label><div style="font-family:'Space Mono',monospace;font-size:12px">${b.delivery} ${b.delivery_time||''}</div></div></div>
     <div class="fg"><label>PDI Progress</label><div class="pdi-track" style="margin-top:7px">${PDI_STAGES.map((s,i)=>`<div class="pdi-step ${i<b.pdi?'done':i===b.pdi?'curr':''}"><div class="pdidot">${i<b.pdi?'✓':i===b.pdi?'●':'○'}</div><div class="pdilbl">${s}</div></div>`).join('')}</div></div>
