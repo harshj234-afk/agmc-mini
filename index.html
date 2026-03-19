@@ -941,7 +941,7 @@ const ROSTER_DATA = [
 // STATE
 // ══════════════════════════════════════
 let curRole=null,curUser=null,curPage=null,notifOpen=false;
-let DB = { bookings:[], enquiries:[], viewing:[], flags:[], demo:[], notifications:[], deliveries:[] };
+let DB = { bookings:[], enquiries:[], viewing:[], flags:[], demo:[], notifications:[], deliveries:[], updates:[], invoices:[], registrations:[] };
 
 // ══════════════════════════════════════
 // SEED DATA (runs once if tables empty)
@@ -962,6 +962,9 @@ async function loadAll(){
       supa.from('demo_cars').select('*').order('id',{ascending:true}),
       supa.from('notifications').select('*').order('id',{ascending:false}),
       supa.from('deliveries').select('*').order('delivery_date',{ascending:true}),
+      supa.from('booking_updates').select('*').order('created_at',{ascending:false}),
+      supa.from('invoices').select('*').order('created_at',{ascending:false}),
+      supa.from('registrations').select('*').order('created_at',{ascending:false}),
     ]);
     if(b.error) console.error('Bookings error:',b.error.message);
     if(e.error) console.error('Enquiries error:',e.error.message);
@@ -1139,62 +1142,69 @@ function initApp(){
 
 const NAV={
   se:[
-    {l:'Dashboard',       i:'◉', p:'dashboard'},
-    {l:'My Bookings',     i:'📋',p:'bookings'},
-    {l:'Enquiries',       i:'🔍',p:'enquiries'},
-    {l:'PDI Tracker',     i:'🔧',p:'pdi'},
-    {l:'Delivery Schedule',i:'🚗',p:'delivery'},
-    {l:'Viewing Requests',i:'👁', p:'viewing'},
-    {l:'Demo Cars',       i:'🏎', p:'demo'},
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'My Bookings',       i:'📋',p:'bookings'},
+    {l:'Enquiries',         i:'🔍',p:'enquiries'},
+    {l:'PDI Tracker',       i:'🔧',p:'pdi'},
+    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
+    {l:'Viewing Requests',  i:'👁', p:'viewing'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
   ],
   sa:[
-    {l:'Dashboard',       i:'◉', p:'dashboard'},
-    {l:'All Bookings',    i:'📋',p:'bookings'},
-    {l:'PDI Management',  i:'🔧',p:'pdi'},
-    {l:'Viewing Requests',i:'👁', p:'viewing'},
-    {l:'Data Upload',     i:'📤',p:'upload'},
-    {l:'Deal Progress',   i:'💼',p:'deals'},
-    {l:'Flags',           i:'🚩',p:'flags'},
-    {l:'Demo Cars',       i:'🏎', p:'demo'},
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'All Bookings',      i:'📋',p:'bookings'},
+    {l:'PDI Management',    i:'🔧',p:'pdi'},
+    {l:'Viewing Requests',  i:'👁', p:'viewing'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Registration',      i:'🪪', p:'registration'},
+    {l:'Data Upload',       i:'📤',p:'upload'},
+    {l:'Deal Progress',     i:'💼',p:'deals'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
   ],
   pg:[
-    {l:'Dashboard',       i:'◉', p:'dashboard'},
-    {l:'My Deliveries',   i:'🚗',p:'delivery'},
-    {l:'Car Condition',   i:'🔍',p:'condition'},
-    {l:'Flags',           i:'🚩',p:'flags'},
-    {l:'Demo Cars',       i:'🏎', p:'demo'},
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'My Deliveries',     i:'🚗',p:'delivery'},
+    {l:'Car Condition',     i:'🔍',p:'condition'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
   ],
   admin:[
-    {l:'Dashboard',       i:'◉', p:'dashboard'},
-    {l:'All Bookings',    i:'📋',p:'bookings'},
-    {l:'Enquiries',       i:'🔍',p:'enquiries'},
-    {l:'PDI Management',  i:'🔧',p:'pdi'},
-    {l:'Delivery Schedule',i:'🚗',p:'delivery'},
-    {l:'Viewing Requests',i:'👁', p:'viewing'},
-    {l:'Duty Roster',     i:'🗓', p:'roster'},
-    {l:'Data Upload',     i:'📤',p:'upload'},
-    {l:'Deal Progress',   i:'💼',p:'deals'},
-    {l:'Demo Cars',       i:'🏎', p:'demo'},
-    {l:'Flags',           i:'🚩',p:'flags'},
-    {l:'Performance',     i:'📈',p:'performance'},
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'All Bookings',      i:'📋',p:'bookings'},
+    {l:'Enquiries',         i:'🔍',p:'enquiries'},
+    {l:'PDI Management',    i:'🔧',p:'pdi'},
+    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
+    {l:'Viewing Requests',  i:'👁', p:'viewing'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Registration',      i:'🪪', p:'registration'},
+    {l:'Duty Roster',       i:'🗓', p:'roster'},
+    {l:'Data Upload',       i:'📤',p:'upload'},
+    {l:'Deal Progress',     i:'💼',p:'deals'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Performance',       i:'📈',p:'performance'},
   ],
   mg:[
-    {l:'Dashboard',       i:'◉', p:'dashboard'},
-    {l:'Deliveries',      i:'🚗',p:'delivery'},
-    {l:'Demo Cars',       i:'🏎', p:'demo'},
-    {l:'Duty Roster',     i:'🗓', p:'roster'},
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'Deliveries',        i:'🚗',p:'delivery'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'Duty Roster',       i:'🗓', p:'roster'},
   ],
   ss:[
-    {l:'Overview',        i:'◉', p:'dashboard'},
-    {l:'All Bookings',    i:'📋',p:'bookings'},
-    {l:'Enquiries',       i:'🔍',p:'enquiries'},
-    {l:'PDI Tracker',     i:'🔧',p:'pdi'},
-    {l:'Delivery Schedule',i:'🚗',p:'delivery'},
-    {l:'Duty Roster',     i:'🗓', p:'roster'},
-    {l:'Deal Progress',   i:'💼',p:'deals'},
-    {l:'Flags',           i:'🚩',p:'flags'},
-    {l:'Demo Cars',       i:'🏎', p:'demo'},
-    {l:'Performance',     i:'📈',p:'performance'},
+    {l:'Overview',          i:'◉', p:'dashboard'},
+    {l:'All Bookings',      i:'📋',p:'bookings'},
+    {l:'Enquiries',         i:'🔍',p:'enquiries'},
+    {l:'PDI Tracker',       i:'🔧',p:'pdi'},
+    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Registration',      i:'🪪', p:'registration'},
+    {l:'Duty Roster',       i:'🗓', p:'roster'},
+    {l:'Deal Progress',     i:'💼',p:'deals'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'Performance',       i:'📈',p:'performance'},
   ],
 };
 
@@ -2072,6 +2082,90 @@ demo(){
   </div>`;
 },
 
+invoice(){
+  const inv = DB.invoices || [];
+  const canAct = ['se','sa','admin','ss'].includes(curRole);
+  const myInv = curRole==='se' ? inv.filter(i=>i.se===curUser) : inv;
+  return `
+  <div class="shd">
+    <div class="sttl">Invoice</div>
+    <span class="badge ba">${myInv.length} invoiced</span>
+  </div>
+  ${myInv.length ? `
+  <div class="card">
+    <table class="tbl">
+      <thead><tr>
+        <th>Invoice No</th><th>Customer</th><th>Model</th><th>Model Year</th>
+        <th>SE</th><th>Invoice Date</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+        ${myInv.map(inv=>`<tr>
+          <td class="tm tb">${inv.invoice_no||inv.id}</td>
+          <td class="tb">${inv.customer}</td>
+          <td>${inv.model}</td>
+          <td class="tm">${inv.model_year||'—'}</td>
+          <td style="font-size:11px">${(inv.se||'').split(' ')[0]}</td>
+          <td class="tm" style="font-size:11px">${inv.invoice_date||'—'}</td>
+          <td>${inv.registration_id?'<span class="badge bg">Registered</span>':inv.delivery_scheduled?'<span class="badge ba">Delivery Scheduled</span>':'<span class="badge br">Awaiting</span>'}</td>
+          <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-xs" onclick="openInvoiceDetailModal('${inv.id}')">View</button>
+            ${(curRole==='se'||curRole==='sa'||curRole==='admin')&&!inv.delivery_scheduled?`<button class="btn btn-green btn-xs" onclick="openScheduleDeliveryFromInvoice('${inv.id}')">🚗 Schedule</button>`:''}
+            ${(curRole==='sa'||curRole==='admin')&&!inv.registration_id?`<button class="btn btn-blue btn-xs" onclick="openRegistrationModal('${inv.id}')">🪪 Register</button>`:''}
+          </div></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : `<div class="empty"><div class="empty-ico">🧾</div><p>No invoices yet</p></div>`}`;
+},
+
+registration(){
+  const regs = DB.registrations || [];
+  const myRegs = ['sa','admin','ss'].includes(curRole) ? regs : [];
+  const pending = DB.invoices.filter(i=>!i.registration_id);
+  return `
+  <div class="shd">
+    <div class="sttl">Registration</div>
+    <div style="display:flex;gap:8px">
+      <span class="badge br">${pending.length} pending</span>
+      <span class="badge bg">${myRegs.length} registered</span>
+    </div>
+  </div>
+
+  <!-- Pending Registration -->
+  ${pending.length?`<div class="card" style="margin-bottom:16px;border-color:rgba(245,158,11,.3)">
+    <div class="ch"><div class="ct" style="color:var(--amber)">⏳ Awaiting Registration (${pending.length})</div></div>
+    <table class="tbl"><thead><tr>
+      <th>Invoice No</th><th>Customer</th><th>Model</th><th>SE</th><th>Invoice Date</th><th>Action</th>
+    </tr></thead><tbody>
+      ${pending.map(inv=>`<tr>
+        <td class="tm tb">${inv.invoice_no||inv.id}</td>
+        <td class="tb">${inv.customer}</td>
+        <td>${inv.model}</td>
+        <td style="font-size:11px">${(inv.se||'').split(' ')[0]}</td>
+        <td class="tm" style="font-size:11px">${inv.invoice_date||'—'}</td>
+        <td><button class="btn btn-blue btn-sm" onclick="openRegistrationModal('${inv.id}')">🪪 Register</button></td>
+      </tr>`).join('')}
+    </tbody></table>
+  </div>`:''}
+
+  <!-- Registered Cars -->
+  <div class="card">
+    <div class="ch"><div class="ct">✅ Registered (${myRegs.length})</div></div>
+    ${myRegs.length?`<table class="tbl"><thead><tr>
+      <th>Plate No</th><th>Customer</th><th>Model</th><th>SE</th><th>Reg. Date</th><th>Registered By</th>
+    </tr></thead><tbody>
+      ${myRegs.map(r=>`<tr>
+        <td class="tb" style="font-weight:700;color:var(--white)">${r.plate_number||'—'}</td>
+        <td class="tb">${r.customer||'—'}</td>
+        <td style="font-size:11px">${r.model||'—'}</td>
+        <td style="font-size:11px">${(r.se||'').split(' ')[0]}</td>
+        <td class="tm" style="font-size:11px">${r.registration_date||'—'}</td>
+        <td style="font-size:11px">${r.registered_by||'—'}</td>
+      </tr>`).join('')}
+    </tbody></table>`:`<div class="empty"><div class="empty-ico">🪪</div><p>No registrations yet</p></div>`}
+  </div>`;
+},
+
 performance(){
   return `<div class="shd"><div class="sttl">Performance — March 2024</div></div>
   <div class="sg"><div class="sc red"><div class="slbl">Bookings MTD</div><div class="sval" style="color:var(--red)">${DB.bookings.length}</div><div class="ssub">Target: 12</div></div>
@@ -2349,6 +2443,274 @@ async function doDeleteBooking(id, customerName){
   if(error){ toast('Error deleting: '+error.message,'err'); return; }
   toast(`Booking deleted permanently`,'ok');
   await loadAll(); goTo('bookings');
+}
+
+// ══════════════════════════════════════
+// DAILY BOOKING UPDATES
+// ══════════════════════════════════════
+const UPDATE_TAGS = ['Customer Called','Finance Follow-up','Waiting for Docs','LPO Submitted','Insurance Pending','Ready to Invoice','Customer Visiting','Other'];
+
+function openDailyUpdateModal(bookingId){
+  const b = DB.bookings.find(x=>x.id===bookingId); if(!b) return;
+  const prevUpdates = (DB.updates||[]).filter(u=>u.booking_id===bookingId);
+  openM(`💬 Daily Update — ${b.id}`,`
+    <div style="background:var(--surface2);border-radius:var(--r);padding:11px 14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--white)">${b.customer}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:2px">${b.model} · ${b.deal}</div>
+    </div>
+    <div class="fg"><label>Tag</label>
+      <select class="fc" id="upd-tag">
+        <option value="">— Select tag (optional) —</option>
+        ${UPDATE_TAGS.map(t=>`<option>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg"><label>Comment</label>
+      <textarea class="fc" id="upd-comment" rows="3" placeholder="Write your update for today…"></textarea>
+    </div>
+    <div class="fg"><label>Attach File (optional)</label>
+      <input type="file" class="fc" id="upd-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:13px;padding:8px"/>
+    </div>
+    ${prevUpdates.length?`<div style="margin-top:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--faint);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">Previous Updates</div>
+      <div style="max-height:180px;overflow-y:auto">
+        ${prevUpdates.map(u=>`<div style="background:var(--surface2);border-radius:var(--r);padding:9px 12px;margin-bottom:7px;border-left:3px solid var(--blue)">
+          ${u.tag?`<span style="background:rgba(59,130,246,.15);color:var(--blue);padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase">${u.tag}</span>`:''}
+          <div style="font-size:12px;color:var(--white);margin-top:5px;white-space:pre-wrap">${u.comment}</div>
+          <div style="font-size:10px;color:var(--faint);margin-top:4px">👤 ${u.created_by} · 🕐 ${new Date(u.created_at).toLocaleDateString('en-AE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+          ${u.file_url?`<a href="${u.file_url}" target="_blank" style="font-size:10px;color:var(--blue);margin-top:3px;display:block">📎 View Attachment</a>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn btn-blue" onclick="doSaveDailyUpdate('${bookingId}')">💬 Save Update</button>
+  `);
+}
+
+async function doSaveDailyUpdate(bookingId){
+  const comment = document.getElementById('upd-comment')?.value.trim();
+  const tag     = document.getElementById('upd-tag')?.value||null;
+  const fileEl  = document.getElementById('upd-file');
+  if(!comment){ toast('Please write a comment','warn'); return; }
+
+  let file_url = null;
+  // Upload file to Supabase Storage if provided
+  if(fileEl?.files?.length > 0){
+    const file = fileEl.files[0];
+    const path = `updates/${bookingId}/${Date.now()}_${file.name.replace(/\s/g,'_')}`;
+    const {data: up, error: ue} = await supa.storage.from('attachments').upload(path, file, {upsert:true});
+    if(ue){ toast('File upload failed: '+ue.message,'warn'); }
+    else {
+      const {data: url} = supa.storage.from('attachments').getPublicUrl(path);
+      file_url = url?.publicUrl||null;
+    }
+  }
+
+  const record = {
+    booking_id:  bookingId,
+    comment,
+    tag,
+    file_url,
+    created_by:  curUser,
+    created_at:  new Date().toISOString(),
+    se:          DB.bookings.find(b=>b.id===bookingId)?.se||curUser,
+  };
+
+  const {error} = await supa.from('booking_updates').insert([record]);
+  if(error){ toast('Error: '+error.message,'err'); return; }
+
+  // Notify SA and SS
+  const b = DB.bookings.find(x=>x.id===bookingId);
+  await supa.from('notifications').insert([
+    {title:`💬 Update — ${bookingId}`,body:`${curUser}: ${comment.substring(0,80)}`,type:'deal',target_role:'sa',read:false,booking_id:bookingId},
+  ]);
+  closeM(); toast('Update saved ✓','ok');
+  await loadAll();
+}
+
+// ══════════════════════════════════════
+// INVOICE
+// ══════════════════════════════════════
+function openInvoiceModal(bookingId){
+  const b = DB.bookings.find(x=>x.id===bookingId); if(!b) return;
+  const today = new Date().toISOString().split('T')[0];
+  openM(`🧾 Create Invoice — ${b.id}`,`
+    <div style="background:var(--surface2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--white)">${b.customer}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:2px">${b.model} ${b.model_year||''} · ${b.color||''}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:2px">VSB: ${b.vsb_no||b.id} · SE: ${b.se}</div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Invoice Number</label>
+        <input class="fc" id="inv-no" placeholder="e.g. INV-2026-001" value="INV-${Date.now().toString().slice(-6)}"/>
+      </div>
+      <div class="fg"><label>Invoice Date</label>
+        <input type="date" class="fc" id="inv-date" value="${today}"/>
+      </div>
+    </div>
+    <div class="fg"><label>Notes (optional)</label>
+      <textarea class="fc" id="inv-notes" rows="2" placeholder="Any invoice notes…"></textarea>
+    </div>
+    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:10px 13px;font-size:11px;color:var(--amber)">
+      ⚠️ Once invoiced, this booking moves to the <b>Invoice</b> section. SA can then schedule delivery and registration.
+    </div>
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn btn-ghost" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="doCreateInvoice('${bookingId}')">🧾 Create Invoice</button>
+  `);
+}
+
+async function doCreateInvoice(bookingId){
+  const b = DB.bookings.find(x=>x.id===bookingId); if(!b) return;
+  const invNo   = document.getElementById('inv-no')?.value.trim();
+  const invDate = document.getElementById('inv-date')?.value;
+  const notes   = document.getElementById('inv-notes')?.value||null;
+  if(!invNo||!invDate){ toast('Invoice number and date are required','warn'); return; }
+
+  const invRecord = {
+    booking_id:   bookingId,
+    invoice_no:   invNo,
+    invoice_date: invDate,
+    customer:     b.customer,
+    model:        b.model,
+    model_year:   b.model_year||null,
+    color:        b.color||null,
+    vin:          b.vin||null,
+    vsb_no:       b.vsb_no||null,
+    se:           b.se,
+    notes,
+    created_by:   curUser,
+    created_at:   new Date().toISOString(),
+    delivery_scheduled: false,
+    registration_id: null,
+  };
+
+  const {error} = await supa.from('invoices').insert([invRecord]);
+  if(error){ toast('Error: '+error.message,'err'); return; }
+
+  // Update booking deal stage to Invoiced
+  await supa.from('bookings').update({deal:'Invoiced'}).eq('id',bookingId);
+
+  // Notify SA
+  await supa.from('notifications').insert([{
+    title:`🧾 Invoice Created — ${bookingId}`,
+    body:`${curUser} invoiced ${b.customer} — ${b.model}. Invoice: ${invNo}`,
+    type:'deal', target_role:'sa', read:false, booking_id:bookingId
+  }]);
+
+  closeM(); toast(`Invoice ${invNo} created ✓`,'ok');
+  await loadAll(); goTo('invoice');
+}
+
+function openInvoiceDetailModal(invoiceId){
+  const inv = DB.invoices.find(x=>x.id===invoiceId); if(!inv) return;
+  const reg = DB.registrations.find(r=>r.invoice_id===invoiceId);
+  openM(`🧾 Invoice — ${inv.invoice_no}`,`
+    <div class="fr c2">
+      <div class="fg"><label>Invoice No.</label><div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--white)">${inv.invoice_no}</div></div>
+      <div class="fg"><label>Invoice Date</label><div>${inv.invoice_date}</div></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Customer</label><div style="font-weight:600;color:var(--white)">${inv.customer}</div></div>
+      <div class="fg"><label>SE</label><div>${inv.se}</div></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Model</label><div>${inv.model} ${inv.model_year||''}</div></div>
+      <div class="fg"><label>Color</label><div>${inv.color||'—'}</div></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>VIN</label><div style="font-family:'Space Mono',monospace;font-size:11px">${inv.vin||'—'}</div></div>
+      <div class="fg"><label>VSB No.</label><div style="font-family:'Space Mono',monospace">${inv.vsb_no||'—'}</div></div>
+    </div>
+    ${reg?`<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r);padding:12px 14px;margin-top:8px">
+      <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">✅ Registered</div>
+      <div class="fr c2" style="gap:8px">
+        <div><div style="font-size:9px;color:var(--faint);text-transform:uppercase;margin-bottom:2px">Plate No.</div><div style="font-size:14px;font-weight:800;color:var(--white)">${reg.plate_number||'—'}</div></div>
+        <div><div style="font-size:9px;color:var(--faint);text-transform:uppercase;margin-bottom:2px">Reg. Date</div><div style="font-size:13px;color:var(--white)">${reg.registration_date||'—'}</div></div>
+      </div>
+    </div>`:''}
+    ${inv.notes?`<div class="fg" style="margin-top:8px"><label>Notes</label><div style="color:var(--dim)">${inv.notes}</div></div>`:''}
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Close</button>
+    ${!inv.delivery_scheduled&&(curRole==='se'||curRole==='sa'||curRole==='admin')?`<button class="btn btn-green" onclick="closeM();openScheduleDeliveryFromInvoice('${invoiceId}')">🚗 Schedule Delivery</button>`:''}
+    ${!reg&&(curRole==='sa'||curRole==='admin')?`<button class="btn btn-blue" onclick="closeM();openRegistrationModal('${invoiceId}')">🪪 Register</button>`:''}
+  `);
+}
+
+async function openScheduleDeliveryFromInvoice(invoiceId){
+  const inv = DB.invoices.find(x=>x.id===invoiceId); if(!inv) return;
+  // Mark delivery as scheduled on invoice
+  const {error} = await supa.from('invoices').update({delivery_scheduled:true}).eq('id',invoiceId);
+  if(!error){ toast('Opening delivery scheduler…','ok'); await loadAll(); }
+  openScheduleDeliveryFromPage();
+}
+
+// ══════════════════════════════════════
+// REGISTRATION
+// ══════════════════════════════════════
+function openRegistrationModal(invoiceId){
+  const inv = DB.invoices.find(x=>x.id===invoiceId); if(!inv) return;
+  const today = new Date().toISOString().split('T')[0];
+  openM(`🪪 Register Vehicle — ${inv.invoice_no}`,`
+    <div style="background:var(--surface2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--white)">${inv.customer}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:2px">${inv.model} ${inv.model_year||''} · ${inv.color||''}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:2px">Invoice: ${inv.invoice_no} · SE: ${inv.se}</div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Plate Number</label>
+        <input class="fc" id="reg-plate" placeholder="e.g. A 12345" style="text-transform:uppercase;font-weight:700;font-size:16px;letter-spacing:2px"/>
+      </div>
+      <div class="fg"><label>Registration Date</label>
+        <input type="date" class="fc" id="reg-date" value="${today}"/>
+      </div>
+    </div>
+    <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);padding:10px 13px;font-size:11px;color:var(--blue)">
+      📋 Once registered, this car will move to your Registration report and the booking will be marked as Registered.
+    </div>
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn btn-blue" onclick="doCompleteRegistration('${invoiceId}')">🪪 Complete Registration</button>
+  `);
+}
+
+async function doCompleteRegistration(invoiceId){
+  const inv = DB.invoices.find(x=>x.id===invoiceId); if(!inv) return;
+  const plate = document.getElementById('reg-plate')?.value.trim().toUpperCase();
+  const regDate = document.getElementById('reg-date')?.value;
+  if(!plate){ toast('Plate number is required','warn'); return; }
+  if(!regDate){ toast('Registration date is required','warn'); return; }
+
+  const regRecord = {
+    invoice_id:        invoiceId,
+    booking_id:        inv.booking_id,
+    invoice_no:        inv.invoice_no,
+    plate_number:      plate,
+    registration_date: regDate,
+    customer:          inv.customer,
+    model:             inv.model,
+    model_year:        inv.model_year||null,
+    se:                inv.se,
+    registered_by:     curUser,
+    created_at:        new Date().toISOString(),
+  };
+
+  const {data: reg, error} = await supa.from('registrations').insert([regRecord]).select().single();
+  if(error){ toast('Error: '+error.message,'err'); return; }
+
+  // Update invoice with registration_id
+  await supa.from('invoices').update({registration_id: reg.id}).eq('id',invoiceId);
+  // Update booking deal stage to Registered
+  await supa.from('bookings').update({deal:'Registered'}).eq('id',inv.booking_id);
+
+  // Notify SE and SS
+  await supa.from('notifications').insert([
+    {title:`🪪 Registered — ${inv.invoice_no}`,body:`${inv.customer} — ${inv.model} registered (${plate}) by ${curUser}`,type:'deal',target_role:'se',read:false,booking_id:inv.booking_id},
+    {title:`🪪 Registered — ${inv.invoice_no}`,body:`${inv.customer} — Plate: ${plate}`,type:'deal',target_role:'ss',read:false,booking_id:inv.booking_id},
+  ]);
+
+  closeM(); toast(`Vehicle registered — Plate: ${plate} ✓`,'ok');
+  await loadAll(); goTo('registration');
 }
 
 // ══════════════════════════════════════
@@ -3169,8 +3531,10 @@ function openBkModal(id){
     <div class="fg"><label>Notes</label><div style="font-size:12px;color:var(--dim);font-style:italic">${b.notes||'—'}</div></div>
     ${(()=>{const del=DB.deliveries.find(d=>d.booking_id===b.id);return del?`<hr class="dv"/><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r);padding:11px 14px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">🚗 Delivery Scheduled</div><div style="font-size:12px;color:var(--dim)"><b>Date:</b> ${del.delivery_date} &nbsp;|&nbsp; <b>Time:</b> ${del.delivery_time} &nbsp;|&nbsp; <b>PG:</b> ${del.pg_assigned||'—'}</div>${del.special_instructions?`<div style="font-size:11px;color:var(--faint);margin-top:4px">${del.special_instructions}</div>`:''}</div>`:''})()}
   `,`<button class="btn btn-ghost" onclick="closeM()">Close</button>
+    ${curRole==='se'?`<button class="btn btn-ghost" style="color:var(--blue);border-color:rgba(59,130,246,.4)" onclick="closeM();openDailyUpdateModal('${b.id}')">💬 Daily Update</button>`:''}
     ${canPDI()?`<button class="btn btn-blue" onclick="closeM();openPDIModal('${b.id}')">Push PDI</button>`:''}
     ${curRole==='se'?`<button class="btn btn-green" onclick="closeM();openScheduleDeliveryModal('${b.id}')">🚗 Schedule Delivery</button>`:''}
+    ${(curRole==='se'||curRole==='sa'||curRole==='admin')&&b.deal!=='Invoiced'&&b.deal!=='Delivered'&&b.deal!=='Lost'?`<button class="btn btn-ghost" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="closeM();openInvoiceModal('${b.id}')">🧾 Invoice</button>`:''}
     ${canDeal()?`<button class="btn btn-red" onclick="closeM();doAdvanceDeal('${b.id}')">Advance Deal →</button>`:''}
     ${(curRole==='se'||curRole==='sa')&&b.deal!=='Delivered'&&b.deal!=='Lost'?`<button class="btn btn-ghost" style="color:var(--red);border-color:rgba(226,0,26,.3)" onclick="closeM();openMarkLostModal('${b.id}')">✕ Mark as Lost</button>`:''}
     ${b.deal==='Lost'&&(curRole==='sa'||curRole==='admin')?`<button class="btn btn-red" onclick="closeM();doDeleteBooking('${b.id}','${b.customer.replace(/'/g,'')}')">🗑 Delete</button>`:''}
