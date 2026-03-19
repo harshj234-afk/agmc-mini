@@ -1932,8 +1932,12 @@ flags(){
 
 upload(){
   return `<div class="shd"><div class="sttl">Data Upload</div>
-    <button class="btn btn-ghost" onclick="downloadTemplate('bookings')">⬇ Bookings Template</button>
-    <button class="btn btn-ghost" onclick="downloadTemplate('enquiries')" style="margin-left:6px">⬇ Enquiries Template</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ghost" onclick="downloadTemplate('bookings')">⬇ Bookings Template</button>
+      <button class="btn btn-ghost" onclick="downloadTemplate('enquiries')">⬇ Enquiries Template</button>
+      <button class="btn" style="background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.4)" onclick="runDBDiagnostic()">🔍 Check DB Columns</button>
+    </div>
+    <div id="db-diag" style="margin-top:12px"></div>
   </div>
 
   <div class="g2">
@@ -2345,6 +2349,39 @@ async function doDeleteBooking(id, customerName){
   if(error){ toast('Error deleting: '+error.message,'err'); return; }
   toast(`Booking deleted permanently`,'ok');
   await loadAll(); goTo('bookings');
+}
+
+// ══════════════════════════════════════
+// DB DIAGNOSTIC
+// ══════════════════════════════════════
+async function runDBDiagnostic(){
+  const el = document.getElementById('db-diag');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--amber);font-size:12px;padding:10px">🔍 Checking Supabase columns...</div>';
+  try {
+    const {data: sample, error: e1} = await supa.from('bookings').select('*').limit(1);
+    if(e1) throw new Error(e1.message);
+    const EXPECTED = ['id','customer','model','color','vin','se','date','deal','pdi','model_year','vsb_no','trim','deposit','bank_name'];
+    const actual = (sample && sample.length > 0) ? Object.keys(sample[0]) : [];
+    const missing = EXPECTED.filter(c => !actual.includes(c));
+    const present = EXPECTED.filter(c => actual.includes(c));
+    const {data: s2} = await supa.from('bookings').select('id,model,model_year,vsb_no,trim,deposit,bank_name').limit(3);
+    let rows = (s2||[]).map(b => {
+      const myColor = b.model_year ? 'var(--green)' : 'var(--red)';
+      return '<tr><td>'+b.id+'</td><td>'+b.model+'</td><td style="color:'+myColor+'">'+(b.model_year||'MISSING')+'</td><td>'+(b.vsb_no||'—')+'</td><td>'+(b.trim||'—')+'</td><td>'+(b.deposit||'0')+'</td><td>'+(b.bank_name||'—')+'</td></tr>';
+    }).join('');
+    let missingHtml = missing.length > 0
+      ? '<div style="background:rgba(226,0,26,.08);border:1px solid rgba(226,0,26,.3);border-radius:6px;padding:10px 12px;margin-bottom:10px"><div style="color:var(--red);font-weight:700;margin-bottom:4px">MISSING COLUMNS ('+missing.length+'): '+missing.join(', ')+'</div><div style="color:var(--dim);font-size:11px">Run agmc_add_booking_columns.sql in Supabase SQL Editor</div></div>'
+      : '<div style="color:var(--green);margin-bottom:10px">All columns present!</div>';
+    el.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:12px">'
+      + '<div style="font-weight:700;color:var(--white);margin-bottom:10px">Supabase bookings — Column Check</div>'
+      + '<div style="color:var(--green);margin-bottom:8px;font-size:11px">Present: '+present.join(', ')+'</div>'
+      + missingHtml
+      + '<table class="tbl" style="font-size:11px"><thead><tr><th>ID</th><th>Model</th><th>Model Year</th><th>VSB</th><th>Trim</th><th>Deposit</th><th>Bank</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      + '</div>';
+  } catch(err) {
+    el.innerHTML = '<div style="color:var(--red);padding:10px;font-size:12px">Error: '+err.message+'</div>';
+  }
 }
 
 // ══════════════════════════════════════
