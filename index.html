@@ -1098,7 +1098,8 @@ function myBks(){
   if(curRole==='se') return DB.bookings.filter(b=>
     (b.se===curUser || b.se==='Management') && b.deal!=='Lost'
   );
-  if(curRole==='pg') return DB.bookings.filter(b=>b.pg_assigned===curUser);
+  if(curRole==='pg')     return DB.bookings.filter(b=>b.pg_assigned===curUser);
+  if(curRole==='driver') return DB.bookings.filter(b=>b.pdi>=2 && b.pdi<7); // PDI In Progress only
   return DB.bookings; // sa, admin, ss see all (including Lost for review)
 }
 function myEnqs(){
@@ -1125,6 +1126,7 @@ function canPDI(){ return ['se','sa','admin','driver'].includes(curRole); }
 function isDriverRole(){ return curRole === 'driver'; }
 // Driver-restricted PDI stages: only these indices allowed
 const DRIVER_PDI_STAGES = [
+  {idx:2, label:'PDI In Progress'},
   {idx:3, label:'PDI Complete'},
   {idx:4, label:'Tinting Done'},
   {idx:5, label:'Ceramic Done'},
@@ -2000,7 +2002,7 @@ condition(){
 },
 
 demo(){
-  const canEdit = ['mg','admin'].includes(curRole);
+  const canEdit = ['mg','admin','driver'].includes(curRole);
   const canUpdateStatus = ['mg','admin','driver'].includes(curRole);
   return `
   <div class="shd">
@@ -3650,7 +3652,7 @@ function openDriverPDIModal(id){
     <div class="fg"><label>Update Stage To</label>
       <select class="fc" id="dpdi-stage">
         <option value="">— Select new stage —</option>
-        ${DRIVER_PDI_STAGES.filter(s=>s.idx > b.pdi).map(s=>`<option value="${s.idx}">${s.label}</option>`).join('')}
+        ${DRIVER_PDI_STAGES.filter(s=>s.idx >= 2 && s.idx > b.pdi).map(s=>`<option value="${s.idx}">${s.label}</option>`).join('')}
       </select>
     </div>
     <div class="fr c2">
@@ -3709,7 +3711,7 @@ function openPDIModal(id){
   const b=DB.bookings.find(x=>x.id===id); if(!b) return;
   const isDriver = curRole==='driver';
   // Driver can update stage 3 (PDI Complete) through 6 (Ready for Delivery) + tinting/ceramic
-  const driverStages = PDI_STAGES.slice(3); // PDI Complete, Tinting Done, Ceramic Done, Ready for Delivery
+  const driverStages = PDI_STAGES.slice(2); // PDI In Progress through Ready for Delivery
   openM(isDriver?`🔧 PDI Update — ${b.id}`:`PDI Request — ${b.id}`,`
     <div class="ibox">📋 <b>${b.customer}</b> · ${b.model} · ${b.color||'—'}<br/>Current stage: <b>${PDI_STAGES[b.pdi]||'Not Started'}</b></div>
     ${isDriver?`
