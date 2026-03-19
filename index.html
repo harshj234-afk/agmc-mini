@@ -865,6 +865,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
         <option value="admin">Admin</option>
         <option value="mg">Meet &amp; Greet</option>
         <option value="ss">Sales Supervisor</option>
+        <option value="driver">Driver</option>
       </select>
       <label class="ll">Your Name</label>
       <select class="ls" id="user-sel"><option value="">— Select role first —</option></select>
@@ -956,6 +957,8 @@ const USER_DB = [
   {name:'Khawla Saleh',       role:'mg',    pin:'4551'},
   {name:'Khouloud Zaidi',     role:'mg',    pin:'1025'},
   {name:'Abdul Baseth',       role:'ss',    pin:'9999'},
+  {name:'Zain',               role:'driver', pin:'1111'},
+  {name:'Rahul',              role:'driver', pin:'2222'},
 ];
 const USERS = {
   se:    ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'],
@@ -963,10 +966,11 @@ const USERS = {
   pg:    ['Faizan Asim','Ege Andac'],
   admin: ['Rachael Fernandes','Harsh Jain'],
   mg:    ['Maham Jawed','Khawla Saleh','Khouloud Zaidi'],
-  ss:    ['Abdul Baseth']
+  ss:    ['Abdul Baseth'],
+  driver:['Zain','Rahul']
 };
-const ROLE_LABEL = {se:'Sales Executive',sa:'Sales Assistance',pg:'Product Genius',admin:'Admin',mg:'Meet & Greet',ss:'Sales Supervisor'};
-const ROLE_COLOR = {se:'#3b82f6',sa:'#a855f7',pg:'#22c55e',admin:'#f59e0b',mg:'#ec4899',ss:'#E2001A'};
+const ROLE_LABEL = {se:'Sales Executive',sa:'Sales Assistance',pg:'Product Genius',admin:'Admin',mg:'Meet & Greet',ss:'Sales Supervisor',driver:'Driver'};
+const ROLE_COLOR = {se:'#3b82f6',sa:'#a855f7',pg:'#22c55e',admin:'#f59e0b',mg:'#ec4899',ss:'#E2001A',driver:'#06b6d4'};
 const MODELS = ['F65 5D Hatch Cooper C','F65 5D Hatch Cooper C Essential','F65 5D Hatch Cooper S','F65 5D Hatch Cooper S - Accessorised','F65 5D Hatch Cooper S JCW Kit','F66 3D Hatch Cooper C','F66 3D Hatch Cooper C Essential','F66 3D Hatch Cooper JCW','F66 3D Hatch Cooper JCW Victory Edition','F66 3D Hatch Cooper S','F66 3D Hatch Cooper S - Accessorised','F66 3D Hatch Cooper S JCW Kit','F67 Convertible JCW','F67 Convertible S','F67 Convertible S JCW Kit','J01 3D Hatch Cooper SE - Accessorised','J05 Aceman SE','J05 Aceman SE JCW Kit','J05 Aceman SE Launch Edition','U25 Countryman C Essential Trim','U25 Countryman C Favoured Trim','U25 Countryman Cooper S ALL4','U25 Countryman Cooper S ALL4 JCW Kit','U25 Countryman JCW ALL4','U25 Countryman SE ALL4'];
 const PDI_STAGES = ['Line Push','Workshop Received','PDI In Progress','PDI Complete','Tinting Done','Ceramic Done','Ready for Delivery'];
 const DEAL_STAGES = ['Finance Pending','Finance Approved','LPO Received','LOI Received','Insured','Registered','Ready for Delivery','Invoiced','Delivered','Lost'];
@@ -988,6 +992,8 @@ const ROSTER_DATA = [
   {name:'Khawla Saleh',role:'M&G',days:['OFF','ON','ON','ON','PM','AM','OFF']},
   {name:'Khouloud Zaidi',role:'M&G',days:['ON','OFF','ON','ON','ON','OFF','OFF']},
   {name:'Abdul Baseth',role:'SS',days:['ON','ON','ON','ON','ON','OFF','OFF']},
+  {name:'Zain',          role:'Driver',days:['ON','ON','ON','ON','ON','OFF','OFF']},
+  {name:'Rahul',         role:'Driver',days:['ON','ON','ON','ON','ON','OFF','OFF']},
 ];
 
 // ══════════════════════════════════════
@@ -1044,7 +1050,7 @@ function initApp(){
   const uel = document.getElementById('tb-user');
   if(uel) uel.textContent = curUser;
   const rel = document.getElementById('tb-role');
-  if(rel) rel.textContent = (NAV[curRole]||[])[0]?.l ? ({se:'Sales Executive',sa:'Sales Assistance',pg:'Product Genius',admin:'Admin',mg:'Meet & Greet',ss:'Sales Supervisor'}[curRole]||curRole) : curRole;
+  if(rel) rel.textContent = (NAV[curRole]||[])[0]?.l ? ({se:'Sales Executive',sa:'Sales Assistance',pg:'Product Genius',admin:'Admin',mg:'Meet & Greet',ss:'Sales Supervisor',driver:'Driver'}[curRole]||curRole) : curRole;
 }
 
 function buildNav(){
@@ -1115,7 +1121,15 @@ function dealBadge(s){
 }
 function pdiName(i){ return PDI_STAGES[i]||'Not Started'; }
 function nextStep(s){ const i=DEAL_STAGES.indexOf(s); return i<DEAL_STAGES.length-1?'→ '+DEAL_STAGES[i+1]:'✓ Complete'; }
-function canPDI(){ return ['se','sa','admin'].includes(curRole); }
+function canPDI(){ return ['se','sa','admin','driver'].includes(curRole); }
+function isDriverRole(){ return curRole === 'driver'; }
+// Driver-restricted PDI stages: only these indices allowed
+const DRIVER_PDI_STAGES = [
+  {idx:3, label:'PDI Complete'},
+  {idx:4, label:'Tinting Done'},
+  {idx:5, label:'Ceramic Done'},
+  {idx:6, label:'Ready for Delivery'},
+];
 function canDeal(){ return ['sa','admin','ss'].includes(curRole); }
 function genId(prefix){ return prefix+'-'+Date.now().toString(36).toUpperCase(); }
 
@@ -1236,6 +1250,12 @@ const NAV={
     {l:'Demo Cars',         i:'🏎', p:'demo'},
     {l:'Duty Roster',       i:'🗓', p:'roster'},
   ],
+  driver:[
+    {l:'Dashboard',       i:'◉', p:'dashboard'},
+    {l:'PDI Update',      i:'🔧',p:'pdi'},
+    {l:'Demo Cars',       i:'🏎', p:'demo'},
+    {l:'Flags',           i:'🚩',p:'flags'},
+  ],
   ss:[
     {l:'Overview',          i:'◉', p:'dashboard'},
     {l:'All Bookings',      i:'📋',p:'bookings'},
@@ -1258,6 +1278,41 @@ const NAV={
 const PAGES = {
 
 dashboard(){
+  // ── Driver gets a simplified dashboard ──
+  if(curRole==='driver'){
+    const pdiActive = DB.bookings.filter(b=>b.pdi>0&&b.pdi<6);
+    const pdiReady  = DB.bookings.filter(b=>b.pdi===6);
+    const myFlags   = (DB.flags||[]).filter(f=>f.raised_by===curUser);
+    return `
+    <div class="shd"><div class="sttl">Welcome, ${curUser} 👋</div>
+      <span style="background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.25);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Driver</span>
+    </div>
+    <div class="fr c3">
+      <div class="card" style="text-align:center;padding:20px 12px">
+        <div style="font-size:30px;font-weight:800;color:#22d3ee">${pdiActive.length}</div>
+        <div style="font-size:11px;color:var(--faint);margin-top:4px">PDI In Progress</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 12px">
+        <div style="font-size:30px;font-weight:800;color:var(--green)">${pdiReady.length}</div>
+        <div style="font-size:11px;color:var(--faint);margin-top:4px">Ready for Delivery</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 12px">
+        <div style="font-size:30px;font-weight:800;color:var(--amber)">${myFlags.length}</div>
+        <div style="font-size:11px;color:var(--faint);margin-top:4px">My Flags</div>
+      </div>
+    </div>
+    ${pdiActive.length ? `<div class="card">
+      <div class="ch"><div class="ct" style="color:#22d3ee">🔧 Needs PDI Update (${pdiActive.length})</div></div>
+      <table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Model</th><th>Current Stage</th><th></th></tr></thead>
+      <tbody>${pdiActive.slice(0,10).map(b=>`<tr>
+        <td class="tm tb">${b.id}</td>
+        <td class="tb">${b.customer}</td>
+        <td style="font-size:11px">${b.model}</td>
+        <td><span class="badge ba" style="font-size:9px">${PDI_STAGES[b.pdi]}</span></td>
+        <td><button class="btn btn-sm" style="background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.3)" onclick="openDriverPDIModal('${b.id}')">🔧 Update</button></td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : `<div class="empty"><div class="empty-ico">✅</div><p>All PDI stages up to date</p></div>`}`;
+  }
   const today = new Date().toISOString().split('T')[0];
   const todayStr = new Date().toLocaleDateString('en-AE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
@@ -1844,7 +1899,7 @@ viewing(){
 flags(){
   const open=DB.flags.filter(f=>f.status==='Open');
   const res=DB.flags.filter(f=>f.status==='Resolved');
-  return `<div class="shd"><div class="sttl">Flags</div><div style="display:flex;gap:7px"><span class="badge br">${open.length} Open</span><span class="badge bg">${res.length} Resolved</span>${curRole==='pg'?`<button class="btn btn-red btn-sm" onclick="openRaiseFlagModal()">🚩 Raise Flag</button>`:''}</div></div>
+  return `<div class="shd"><div class="sttl">Flags</div><div style="display:flex;gap:7px"><span class="badge br">${open.length} Open</span><span class="badge bg">${res.length} Resolved</span>${['pg','driver'].includes(curRole)?`<button class="btn btn-red btn-sm" onclick="openRaiseFlagModal()">🚩 Raise Flag</button>`:''}</div></div>
   ${open.length===0?`<div class="empty"><div class="empty-ico">✅</div><p>No open flags</p></div>`:''}
   ${open.map(f=>`<div class="flg"><div style="font-size:16px">🚩</div><div style="flex:1"><div class="flg-ttl">${f.title}</div><div class="flg-body">${f.body}</div><div class="flg-meta">Raised by <b>${f.raised_by}</b> · Severity: <b>${f.severity}</b> · SE: <b>${f.se}</b> · SA: <b>${f.sa}</b></div><div style="display:flex;gap:7px;margin-top:9px">${['sa','admin','ss'].includes(curRole)?`<button class="btn btn-green btn-sm" onclick="doResolveFlag('${f.id}')">✓ Resolve</button>`:''}<button class="btn btn-ghost btn-sm" onclick="toast('Comment added','ok')">💬 Comment</button></div></div></div>`).join('')}
   ${res.length?`<div style="margin-top:18px"><div style="font-size:10px;font-weight:700;color:var(--faint);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Resolved</div>${res.map(f=>`<div class="flg res"><div style="font-size:16px">✅</div><div><div class="flg-ttl">${f.title}</div><div class="flg-meta">Resolved · Raised by ${f.raised_by}</div></div></div>`).join('')}</div>`:''}`;
@@ -1946,6 +2001,7 @@ condition(){
 
 demo(){
   const canEdit = ['mg','admin'].includes(curRole);
+  const canUpdateStatus = ['mg','admin','driver'].includes(curRole);
   return `
   <div class="shd">
     <div class="sttl">Demo &amp; Display Cars</div>
@@ -3582,17 +3638,114 @@ function openBkModal(id){
 
 
 
+function openDriverPDIModal(id){
+  const b = DB.bookings.find(x=>x.id===id); if(!b) return;
+  const currentStage = PDI_STAGES[b.pdi] || 'Not Started';
+  openM(`🔧 PDI Update — ${b.id}`,`
+    <div class="ibox" style="background:rgba(6,182,212,.06);border-color:rgba(6,182,212,.2)">
+      <div style="font-weight:700;color:var(--white)">${b.customer}</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:3px">${b.model} · ${b.color||'—'}</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:3px">Current stage: <b style="color:#22d3ee">${currentStage}</b></div>
+    </div>
+    <div class="fg"><label>Update Stage To</label>
+      <select class="fc" id="dpdi-stage">
+        <option value="">— Select new stage —</option>
+        ${DRIVER_PDI_STAGES.filter(s=>s.idx > b.pdi).map(s=>`<option value="${s.idx}">${s.label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Tinting</label>
+        <select class="fc" id="dpdi-tint">
+          <option ${b.tinting==='None'?'selected':''}>None</option>
+          <option ${b.tinting==='30%'?'selected':''}>30%</option>
+          <option ${b.tinting==='50%'?'selected':''}>50%</option>
+          <option ${b.tinting==='70%'?'selected':''}>70%</option>
+        </select>
+      </div>
+      <div class="fg"><label>Ceramic Coating</label>
+        <select class="fc" id="dpdi-cer">
+          <option ${!b.ceramic?'selected':''}>No</option>
+          <option ${b.ceramic?'selected':''}>Yes</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Notes (optional)</label>
+      <textarea class="fc" id="dpdi-notes" rows="2" placeholder="Any remarks…"></textarea>
+    </div>
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn" style="background:rgba(6,182,212,.15);color:#22d3ee;border:1px solid rgba(6,182,212,.4)" onclick="doDriverPDIUpdate('${id}')">🔧 Save Update</button>
+  `);
+}
+
+async function doDriverPDIUpdate(id){
+  const b = DB.bookings.find(x=>x.id===id); if(!b) return;
+  const newStageIdx = parseInt(document.getElementById('dpdi-stage')?.value);
+  const tinting     = document.getElementById('dpdi-tint')?.value || b.tinting;
+  const ceramic     = document.getElementById('dpdi-cer')?.value === 'Yes';
+  const notes       = document.getElementById('dpdi-notes')?.value||null;
+  if(!newStageIdx){ toast('Please select a stage','warn'); return; }
+  // Validate driver can only set allowed stages
+  const allowed = DRIVER_PDI_STAGES.map(s=>s.idx);
+  if(!allowed.includes(newStageIdx)){ toast('Not authorised to set this stage','err'); return; }
+  const {error} = await supa.from('bookings').update({
+    pdi:     newStageIdx,
+    tinting: tinting,
+    ceramic: ceramic,
+    notes:   notes || b.notes,
+  }).eq('id',id);
+  if(error){ toast('Error: '+error.message,'err'); return; }
+  // Notify SA
+  await supa.from('notifications').insert([{
+    title:`🔧 PDI Update — ${id}`,
+    body:`${curUser} updated PDI to "${PDI_STAGES[newStageIdx]}" for ${b.customer} — ${b.model}`,
+    type:'pdi', target_role:'sa', read:false, booking_id:id
+  }]);
+  closeM(); toast(`PDI updated to "${PDI_STAGES[newStageIdx]}" ✓`,'ok');
+  await loadAll();
+}
+
 function openPDIModal(id){
   const b=DB.bookings.find(x=>x.id===id); if(!b) return;
-  openM(`PDI Request — ${b.id}`,`
-    <div class="ibox">📋 <b>${b.customer}</b> · ${b.model} · ${b.color}<br/>Current: <b>${PDI_STAGES[b.pdi]||'Not Started'}</b></div>
+  const isDriver = curRole==='driver';
+  // Driver can update stage 3 (PDI Complete) through 6 (Ready for Delivery) + tinting/ceramic
+  const driverStages = PDI_STAGES.slice(3); // PDI Complete, Tinting Done, Ceramic Done, Ready for Delivery
+  openM(isDriver?`🔧 PDI Update — ${b.id}`:`PDI Request — ${b.id}`,`
+    <div class="ibox">📋 <b>${b.customer}</b> · ${b.model} · ${b.color||'—'}<br/>Current stage: <b>${PDI_STAGES[b.pdi]||'Not Started'}</b></div>
+    ${isDriver?`
+    <div class="fg"><label>Update Stage To</label>
+      <select class="fc" id="pdi-new-stage">
+        ${driverStages.map((s,i)=>`<option value="${i+3}" ${b.pdi===i+3?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>`:''}
     <div class="fr c2">
       <div class="fg"><label>Tinting</label><select class="fc" id="pdi-tint"><option ${b.tinting==='None'?'selected':''}>None</option><option ${b.tinting==='30%'?'selected':''}>30%</option><option ${b.tinting==='50%'?'selected':''}>50%</option><option ${b.tinting==='70%'?'selected':''}>70%</option></select></div>
       <div class="fg"><label>Ceramic Coating</label><select class="fc" id="pdi-cer"><option ${!b.ceramic?'selected':''}>No</option><option ${b.ceramic?'selected':''}>Yes</option></select></div>
     </div>
-    <div class="fg"><label>Priority</label><select class="fc"><option>Normal</option><option>Urgent</option><option>VIP</option></select></div>
-    <div class="fg"><label>Additional Instructions</label><textarea class="fc" id="pdi-notes" rows="3" placeholder="Special instructions for workshop…">${b.notes||''}</textarea></div>
-  `,`<button class="btn btn-ghost" onclick="closeM()">Cancel</button><button class="btn btn-red" onclick="doPushPDI('${b.id}')">Send PDI Request</button>`);
+    ${!isDriver?`<div class="fg"><label>Priority</label><select class="fc"><option>Normal</option><option>Urgent</option><option>VIP</option></select></div>`:''}
+    <div class="fg"><label>${isDriver?'Update Notes':'Additional Instructions'}</label><textarea class="fc" id="pdi-notes" rows="3" placeholder="${isDriver?'What was done…':'Special instructions for workshop…'}">${b.notes||''}</textarea></div>
+  `,`<button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn btn-red" onclick="${isDriver?`doDriverPDIUpdate('${b.id}')`:`doPushPDI('${b.id}')`}">${isDriver?'✅ Update PDI':'Send PDI Request'}</button>`);
+}
+
+async function doDriverPDIUpdate(bookingId){
+  const b = DB.bookings.find(x=>x.id===bookingId); if(!b) return;
+  const newStage = parseInt(document.getElementById('pdi-new-stage')?.value);
+  const tinting  = document.getElementById('pdi-tint')?.value||b.tinting;
+  const ceramic  = document.getElementById('pdi-cer')?.value==='Yes';
+  const notes    = document.getElementById('pdi-notes')?.value||b.notes;
+  if(isNaN(newStage)){ toast('Select a stage','warn'); return; }
+  const {error} = await supa.from('bookings').update({
+    pdi: newStage, tinting, ceramic, notes
+  }).eq('id', bookingId);
+  if(error){ toast('Error: '+error.message,'err'); return; }
+  await supa.from('notifications').insert([{
+    title:`🔧 PDI Update — ${bookingId}`,
+    body:`${curUser} updated PDI to ${PDI_STAGES[newStage]} | Tinting: ${tinting} | Ceramic: ${ceramic?'Yes':'No'}`,
+    type:'pdi', target_role:'sa', read:false, booking_id:bookingId
+  }]);
+  closeM(); toast(`PDI updated to ${PDI_STAGES[newStage]} ✓`,'ok');
+  await loadAll();
 }
 
 function openEnqModal(id){
