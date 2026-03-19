@@ -1275,7 +1275,7 @@ function bRow(b){
   return `<tr>
     <td data-label="ID" class="tb tm">${b.id}</td>
     <td data-label="Customer" class="tb">${b.customer}</td>
-    <td data-label="Model">${(b.model||'').length>26?(b.model||'').substring(0,26)+'…':b.model}${b.color?`<br/><span style="font-size:10px;color:var(--faint)">${b.color}</span>`:''}</td>
+    <td data-label="Model" style="white-space:normal;min-width:140px;max-width:220px">${b.model||'—'}${b.model_year?`<span style="font-size:10px;color:var(--faint);margin-left:4px">${b.model_year}</span>`:''}${b.color?`<br/><span style="font-size:10px;color:var(--faint)">${b.color}</span>`:''}</td>
     ${showSE?`<td data-label="SE" style="font-size:11px">${(b.se||'').split(' ')[0]}</td>`:''}
     <td data-label="Stage">${dealBadge(b.deal)}</td>
     <td data-label="PDI"><span style="font-size:10px;color:var(--dim)">${pdiName(b.pdi)}</span></td>
@@ -1389,7 +1389,7 @@ dashboard(){
         ${myBk.length?`<table class="tbl"><thead><tr><th>Customer</th><th>Model</th><th>Deal Stage</th><th>PDI</th><th>Action</th></tr></thead><tbody>
           ${myBk.slice(0,6).map(b=>`<tr>
             <td class="tb">${b.customer.split(' ').slice(0,3).join(' ')}</td>
-            <td style="font-size:10px">${(b.model||'').substring(0,22)}</td>
+            <td style="font-size:10px">${b.model||'—'}</td>
             <td>${dealBadge(b.deal)}</td>
             <td style="font-size:10px;color:var(--dim)">${PDI_STAGES[b.pdi]||'—'}</td>
             <td><div style="display:flex;gap:4px">
@@ -1556,7 +1556,7 @@ dashboard(){
             <td class="tm tb">${d.delivery_date}</td>
             <td style="font-size:11px">${d.delivery_time}</td>
             <td class="tb">${d.customer.split(' ').slice(0,2).join(' ')}</td>
-            <td style="font-size:10px">${(d.model||'').substring(0,22)}</td>
+            <td style="font-size:10px">${d.model||'—'}</td>
             <td style="font-size:10px;color:var(--faint)">${d.special_instructions||'—'}</td>
           </tr>`).join('')}
         </tbody></table>`:`<div class="empty"><div class="empty-ico">📅</div><p>No upcoming deliveries</p></div>`}
@@ -1582,7 +1582,7 @@ dashboard(){
       ${myCars.length?`<table class="tbl"><thead><tr><th>Booking</th><th>Customer</th><th>Model</th><th>Color</th><th>SE</th><th>PDI Stage</th><th>Actions</th></tr></thead><tbody>
         ${myCars.map(b=>`<tr>
           <td class="tm tb">${b.id}</td><td class="tb">${b.customer.split(' ').slice(0,2).join(' ')}</td>
-          <td style="font-size:11px">${(b.model||'').substring(0,22)}</td>
+          <td style="font-size:11px">${b.model||'—'}</td>
           <td style="font-size:11px">${b.color||'—'}</td>
           <td style="font-size:11px">${b.se.split(' ')[0]}</td>
           <td><span class="badge ${b.pdi===6?'bg':'ba'}">${PDI_STAGES[b.pdi]||'—'}</span></td>
@@ -1660,7 +1660,7 @@ dashboard(){
           ${upcomingDels.map(d=>{const bk=DB.bookings.find(b=>b.id===d.booking_id)||{};return `<tr>
             <td class="tm tb">${d.delivery_date}</td><td style="font-size:11px">${d.delivery_time}</td>
             <td class="tb">${d.customer.split(' ').slice(0,2).join(' ')}</td>
-            <td style="font-size:10px">${(d.model||'').substring(0,20)}</td>
+            <td style="font-size:10px">${d.model||'—'}</td>
             <td style="font-size:11px">${d.pg_assigned.split(' ')[0]}</td>
             <td>${bk.flowers?`<button class="btn btn-xs" style="background:rgba(236,72,153,.1);color:var(--pink);border-color:rgba(236,72,153,.3);font-size:10px" onclick="toast('Ordered 🌸','ok')">🌸 Order</button>`:'<span class="badge bgr" style="font-size:8px">No</span>'}</td>
           </tr>`;}).join('')}
@@ -1733,7 +1733,7 @@ dashboard(){
     <div class="card">
       <div class="ch"><div class="ct">📋 Recent Bookings</div><button class="btn btn-ghost btn-xs" onclick="goTo('bookings')">All →</button></div>
       <table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Model</th><th>SE</th><th>Stage</th></tr></thead><tbody>
-        ${bks.slice(0,5).map(b=>`<tr><td class="tm tb">${b.id}</td><td class="tb">${b.customer.split(' ').slice(0,2).join(' ')}</td><td style="font-size:10px">${(b.model||'').substring(0,20)}</td><td style="font-size:10px">${(b.se||'').split(' ')[0]}</td><td>${dealBadge(b.deal)}</td></tr>`).join('')}
+        ${bks.slice(0,5).map(b=>`<tr><td class="tm tb">${b.id}</td><td class="tb">${b.customer.split(' ').slice(0,2).join(' ')}</td><td style="font-size:10px">${b.model||'—'}</td><td style="font-size:10px">${(b.se||'').split(' ')[0]}</td><td>${dealBadge(b.deal)}</td></tr>`).join('')}
       </tbody></table>
     </div>
     <div class="card">
@@ -1861,7 +1861,7 @@ delivery(){
         return `<tr>
           <td class="tm tb">${d.booking_id}</td>
           <td class="tb">${d.customer}</td>
-          <td style="font-size:11px">${(d.model||'').substring(0,24)}</td>
+          <td style="font-size:11px">${d.model||'—'}</td>
           <td style="font-size:11px">${d.se}</td>
           <td class="tm" style="font-size:11px">${d.delivery_date}</td>
           <td style="font-size:11px">${d.delivery_time}</td>
@@ -1880,7 +1880,7 @@ delivery(){
   <table class="tbl"><thead><tr><th>Date</th><th>Time</th><th>Customer</th><th>Model</th><th>SE</th><th>PG</th><th>Flowers</th><th>Stage</th><th>Actions</th></tr></thead><tbody>
     ${upcoming.map(b=>`<tr>
       <td class="tm tb">${b.delivery}</td><td style="font-size:11px">${b.delivery_time||''}</td>
-      <td class="tb">${b.customer}</td><td style="font-size:11px">${(b.model||'').substring(0,24)}</td>
+      <td class="tb">${b.customer}</td><td style="font-size:11px">${b.model||'—'}</td>
       <td style="font-size:11px">${(b.se||'').split(' ')[0]}</td>
       <td>${b.pg_assigned?`<span class="badge bg">${(b.pg_assigned||'').split(' ')[0]}</span>`:'<span class="badge bgr">None</span>'}</td>
       <td>${b.flowers?'<span class="badge br">🌸 Yes</span>':'<span class="badge bgr">No</span>'}</td>
@@ -1901,7 +1901,7 @@ deals(){
     if(!bks.length) return '';
     return `<div class="card" style="margin-bottom:13px"><div class="ch"><div class="ct">${stage}</div><span class="badge bw">${bks.length}</span></div>
     <table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Model</th><th>SE</th><th>Next Step</th><th>Actions</th></tr></thead><tbody>
-      ${bks.map(b=>`<tr><td class="tm tb">${b.id}</td><td class="tb">${b.customer}</td><td style="font-size:11px">${(b.model||'').substring(0,26)}</td><td style="font-size:11px">${(b.se||'').split(' ')[0]}</td><td style="font-size:10px;color:var(--faint)">${nextStep(b.deal)}</td><td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs" onclick="openBkModal('${b.id}')">View</button>${canDeal()?`<button class="btn btn-red btn-xs" onclick="doAdvanceDeal('${b.id}')">Advance →</button>`:''}</div></td></tr>`).join('')}
+      ${bks.map(b=>`<tr><td class="tm tb">${b.id}</td><td class="tb">${b.customer}</td><td style="font-size:11px">${b.model||'—'}</td><td style="font-size:11px">${(b.se||'').split(' ')[0]}</td><td style="font-size:10px;color:var(--faint)">${nextStep(b.deal)}</td><td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs" onclick="openBkModal('${b.id}')">View</button>${canDeal()?`<button class="btn btn-red btn-xs" onclick="doAdvanceDeal('${b.id}')">Advance →</button>`:''}</div></td></tr>`).join('')}
     </tbody></table></div>`;
   }).join('')}`;
 },
@@ -2787,7 +2787,7 @@ async function doImport(type){
           return d.trim()||null;
         };
         const id = isAGMC
-          ? ('BK-'+(r['VSB No']||r['VSB']||r['Enq Number']||idx+1).toString().trim())
+          ? ('BK-'+(r['Enq Number']||r['VSB No']||r['VSB']||idx+1).toString().trim())
           : ((r.id||genId('BK')).toString().trim());
         // Helper: empty string -> null for optional fields
         const tx = v => (v||'').trim()||null;
@@ -2796,7 +2796,7 @@ async function doImport(type){
           // Field mapping: MY=Model Year, Colour=Color, Customer Name=Customer,
           // Vehicle Description=Model, VSB No=VSB, Sales Exec=SE, Enq Number=ID
           customer:      isAGMC ? (r['Customer Name']||'').trim()         : (r.customer||''),
-          model:         isAGMC ? (r['Vehicle Description']||r['Model']||'').trim() : (r.model||''),
+          model:         isAGMC ? (r['Vehicle Description']||'').trim() : (r.model||''),
           color:         tx(isAGMC ? (r['Colour']||r['Color'])            : r.color),
           vin:           tx(isAGMC ? r['VIN']                             : r.vin),
           vsb_no:        tx(isAGMC ? (r['VSB No']||r['VSB'])             : r.vsb_no),
@@ -3143,7 +3143,7 @@ function openScheduleDeliveryFromPage(){
     <div class="fg"><label>Select Booking</label>
       <select class="fc" id="sdp-booking" onchange="previewBookingForDelivery(this.value)">
         <option value="">— Select a booking —</option>
-        ${eligible.map(b=>`<option value="${b.id}">${b.id} · ${b.customer} · ${(b.model||'').substring(0,28)}</option>`).join('')}
+        ${eligible.map(b=>`<option value="${b.id}">${b.id} · ${b.customer} · ${b.model||'—'}</option>`).join('')}
       </select>
     </div>
     <div id="sdp-preview" style="margin-top:4px"></div>
