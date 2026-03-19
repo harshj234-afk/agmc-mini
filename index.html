@@ -107,13 +107,34 @@ html{height:100%;height:-webkit-fill-available;}body{height:100%;height:-webkit-
 .sico{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:24px;opacity:.1;}
 
 /* CARD */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:16px;overflow:hidden;}
 .ch{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .ct{font-size:13px;font-weight:700;color:var(--white);}
 .cb{padding:16px 18px;}
 
 /* TABLE */
 .tbl{width:100%;border-collapse:collapse;}
+
+/* ── TABLE SCROLL: single authoritative ruleset ── */
+/* Desktop/tablet: tables scroll horizontally inside their container */
+.tbl{
+  display:block;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  white-space:nowrap;
+  font-size:12px;
+  width:100%;
+}
+/* thead/tbody/tr must be display:table so columns line up */
+.tbl thead,
+.tbl tbody{
+  display:table;
+  width:100%;
+  table-layout:auto;
+}
+.tbl tr{
+  display:table-row;
+}
 .tbl th{padding:8px 13px;font-size:9px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap;}
 .tbl td{padding:10px 13px;font-size:12px;color:var(--dim);border-bottom:1px solid var(--border);transition:background .1s;vertical-align:middle;}
 .tbl tr:last-child td{border-bottom:none;}
@@ -270,8 +291,8 @@ textarea.fc{resize:vertical;min-height:70px;}
 .up-prev-head{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface);}
 .up-prev-title{font-size:12px;font-weight:700;color:var(--white);}
 .up-prev-sub{font-size:10px;color:var(--dim);}
-.up-scroll{overflow-x:auto;max-height:260px;overflow-y:auto;}
-.up-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.up-scroll{overflow-x:auto;overflow-y:auto;max-height:300px;width:100%;-webkit-overflow-scrolling:touch;}
+.up-tbl{border-collapse:collapse;font-size:11px;white-space:nowrap;}
 .up-tbl th{padding:7px 10px;background:var(--surface);color:var(--faint);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;}
 .up-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--dim);white-space:nowrap;}
 .up-tbl tr:last-child td{border-bottom:none;}
@@ -366,7 +387,6 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
 
   /* Tables */
   .tbl th,.tbl td{padding:8px 10px;font-size:11px;}
-  .card,.tbl{overflow-x:auto;}
 
   /* Modal — centered on tablet */
   .mov{align-items:center;padding:16px;}
@@ -415,8 +435,6 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
   .cb,.card-body{padding:12px 13px;}
   .ch,.card-head{padding:11px 13px;flex-wrap:wrap;gap:6px;}
 
-  /* Tables scroll */
-  .tbl{display:block;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .tbl thead,.tbl tbody,.tbl tr{display:table;width:100%;table-layout:fixed;}
   .tbl thead{width:calc(100% - 0px);}
 
@@ -625,7 +643,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
   .g2 { grid-template-columns: 1fr 1fr; }
   .g3 { grid-template-columns: 1fr 1fr; }
   .fr.c3 { grid-template-columns: 1fr 1fr !important; }
-  .card .tbl, .card table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .card 
   .fbar { flex-wrap: wrap; }
 }
 
@@ -637,13 +655,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
     -webkit-overflow-scrolling:touch;
     padding-bottom:4px;
   }
-  /* Recent bookings in dashboard */
-  .card .tbl{
-    display:block !important;
-    overflow-x:auto !important;
-    -webkit-overflow-scrolling:touch;
-    white-space:nowrap;
-  }
+
   /* Flag cards */
   .flg{
     flex-direction:column !important;
@@ -662,7 +674,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
 /* ══════════════════════════════════════
    MOBILE — STACKED CARD LAYOUTS
 ══════════════════════════════════════ */
-@media(max-width:700px){
+@media(max-width:600px){
 
   /* ── TABLE → CARD STACK ── */
   .tbl { border:none !important; }
@@ -776,7 +788,6 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
 @media(min-width:701px) and (max-width:900px){
   .g2 { grid-template-columns:1fr 1fr; }
   .fr.c3 { grid-template-columns:1fr 1fr !important; }
-  .tbl { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
 }
 </style>
 </head>
@@ -2612,9 +2623,40 @@ function parseCSV(text){
 function showPreview(type, rows, filename){
   const previewEl = document.getElementById(type==='bookings'?'bk-preview':'eq-preview');
   if(!previewEl) return;
-  const headers = Object.keys(rows[0]);
-  const preview = rows.slice(0,5);
   const errors = validateRows(type, rows);
+  const preview = rows.slice(0,5);
+
+  // Show only the key mapped columns — not every raw CSV column
+  const BOOKING_COLS = [
+    {csv:'Customer Name',   label:'Customer'},
+    {csv:'Vehicle Description', label:'Model'},
+    {csv:'MY',              label:'Model Year'},
+    {csv:'Colour',          label:'Color'},
+    {csv:'VSB No',          label:'VSB No'},
+    {csv:'VIN',             label:'VIN'},
+    {csv:'Sales Exec',      label:'SE'},
+    {csv:'Date Reserved',   label:'Reserved'},
+    {csv:'Finance Status',  label:'Finance'},
+    {csv:'Deposit',         label:'Deposit'},
+    {csv:'Bank Name',       label:'Bank'},
+    {csv:'Trim',            label:'Trim'},
+  ];
+  const ENQ_COLS = [
+    {csv:'Enq Number',      label:'Enq No'},
+    {csv:'Enquiry Number',  label:'Enq No'},
+    {csv:'Customer Full Name', label:'Customer'},
+    {csv:'Vehicle Desc',    label:'Model'},
+    {csv:'User Name',       label:'SE'},
+    {csv:'Progress Code',   label:'Status'},
+    {csv:'Source of Business', label:'Source'},
+    {csv:'Lead Strength',   label:'Lead'},
+    {csv:'Next Action Date',label:'Next Action'},
+  ];
+
+  // Filter to columns that actually exist in this file
+  const allCols = type==='bookings' ? BOOKING_COLS : ENQ_COLS;
+  const cols = allCols.filter(c => rows[0].hasOwnProperty(c.csv));
+
   previewEl.innerHTML = `
     <div class="up-preview">
       <div class="up-prev-head">
@@ -2622,14 +2664,14 @@ function showPreview(type, rows, filename){
           <div class="up-prev-title">📄 ${filename}</div>
           <div class="up-prev-sub">${rows.length} rows detected · Showing first 5</div>
         </div>
-        <span class="badge bg">${errors.length===0?'Valid':'Check errors'}</span>
+        <span class="badge ${errors.length===0?'bg':'br'}">${errors.length===0?'Valid':'Check errors'}</span>
       </div>
       <div class="up-scroll">
         <table class="up-tbl">
-          <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-          <tbody>${preview.map(r=>`<tr>${headers.map(h=>`<td>${r[h]||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+          <thead><tr>${cols.map(c=>'<th>'+c.label+'</th>').join('')}</tr></thead>
+          <tbody>${preview.map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c.csv]||'—')+'</td>').join('')+'</tr>').join('')}</tbody>
         </table>
-      </div>
+      </div>` + `
       ${errors.length>0?`<div class="up-err">⚠️ ${errors.slice(0,3).join(' · ')}${errors.length>3?' · and '+(errors.length-3)+' more...':''}</div>`:'<div class="up-ok">✅ File looks good — ready to import</div>'}
       <div class="up-actions">
         <span class="up-count">${rows.length} records will be imported</span>
@@ -2720,19 +2762,23 @@ async function doImport(type){
           return d.trim()||null;
         };
         const id = isAGMC
-          ? ('BK-'+(r['VSB No']||r['Enq Number']||idx+1).toString().trim())
+          ? ('BK-'+(r['VSB No']||r['VSB']||r['Enq Number']||idx+1).toString().trim())
           : ((r.id||genId('BK')).toString().trim());
         // Helper: empty string -> null for optional fields
         const tx = v => (v||'').trim()||null;
         return {
           id,
+          // Field mapping: MY=Model Year, Colour=Color, Customer Name=Customer,
+          // Vehicle Description=Model, VSB No=VSB, Sales Exec=SE, Enq Number=ID
           customer:      isAGMC ? (r['Customer Name']||'').trim()         : (r.customer||''),
           model:         isAGMC ? (r['Vehicle Description']||r['Model']||'').trim() : (r.model||''),
-          color:         tx(isAGMC ? r['Colour']      : r.color),
-          vin:           tx(isAGMC ? r['VIN']         : r.vin),
+          color:         tx(isAGMC ? (r['Colour']||r['Color'])            : r.color),
+          vin:           tx(isAGMC ? r['VIN']                             : r.vin),
+          vsb_no:        tx(isAGMC ? (r['VSB No']||r['VSB'])             : r.vsb_no),
+          model_year:    tx(isAGMC ? (r['MY']||r['Model Year'])           : r.model_year),
           se:            (()=>{
             const VALID_SES = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
-            const raw = isAGMC ? (r['Sales Exec']||'').trim() : (r.se||'');
+            const raw = isAGMC ? (r['Sales Exec']||r['SE']||'').trim() : (r.se||'');
             if(!raw) return 'Unassigned';
             if(VALID_SES.includes(raw)) return raw;
             if(raw==='Management') return 'Management'; // visible to all SEs
@@ -2749,17 +2795,17 @@ async function doImport(type){
           flowers:       r.flowers==='true'||r.flowers==='Yes'||false,
           notes:         tx(isAGMC ? (r['Vehicle Notes']||r['Cust ref']||'') : (r.notes||''))?.substring(0,500)||null,
           view_req:      false,
-          deposit:       isAGMC ? (parseInt((r['Deposit']||'0').replace(/[^0-9]/g,''))||0) : (parseInt(r.deposit)||0),
-          model_year:    tx(isAGMC ? r['MY']       : r.model_year),
-          trim:          tx(isAGMC ? r['Trim']      : r.trim),
-          vsb_no:        tx(isAGMC ? r['VSB No']    : r.vsb_no),
-          bank_name:     tx(isAGMC ? r['Bank Name'] : r.bank_name),
+          deposit:       isAGMC ? (parseInt(((r['Deposit']||r['deposit']||'0')).replace(/[^0-9]/g,''))||0) : (parseInt(r.deposit)||0),
+
+          trim:          tx(isAGMC ? (r['Trim']||r['trim'])           : r.trim),
+
+          bank_name:     tx(isAGMC ? (r['Bank Name']||r['Bank'])      : r.bank_name),
         };
       });
     } else {
       // Support BOTH AGMC real enquiry CSV AND simple template
       records = data.rows.map((r,idx)=>{
-        const isAGMC = r.hasOwnProperty('Enquiry Number') || r.hasOwnProperty('User Name') || r.hasOwnProperty('Progress Code');
+        const isAGMC = r.hasOwnProperty('Enquiry Number') || r.hasOwnProperty('Enq Number') || r.hasOwnProperty('User Name') || r.hasOwnProperty('Progress Code');
         const parseDate = (d) => {
           if(!d||d.trim()===''||d.includes('--')||d.trim()==='--/--/----') return null;
           const parts = d.trim().split('/');
@@ -2851,6 +2897,18 @@ async function doImport(type){
         // Merge: CSV wins for core info, preserve manual operational fields
         return {
           ...r,
+          // CSV fields always win (overwrite old values)
+          customer:    r.customer    || prev.customer,
+          model:       r.model       || prev.model,
+          color:       r.color       || prev.color,
+          vin:         r.vin         || prev.vin,
+          vsb_no:      r.vsb_no      || prev.vsb_no,
+          model_year:  r.model_year  || prev.model_year,
+          trim:        r.trim        || prev.trim,
+          deposit:     r.deposit     || prev.deposit,
+          bank_name:   r.bank_name   || prev.bank_name,
+          se:          r.se          || prev.se,
+          date:        r.date        || prev.date,
           // Preserve manually-set operational fields if already set
           pdi:           prev.pdi > 0 ? prev.pdi : r.pdi,
           tinting:       prev.tinting && prev.tinting!=='None' ? prev.tinting : r.tinting,
