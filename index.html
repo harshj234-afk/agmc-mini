@@ -2361,7 +2361,7 @@ async function runDBDiagnostic(){
   try {
     const {data: sample, error: e1} = await supa.from('bookings').select('*').limit(1);
     if(e1) throw new Error(e1.message);
-    const EXPECTED = ['id','customer','model','color','vin','se','date','deal','pdi','model_year','vsb_no','trim','deposit','bank_name'];
+    const EXPECTED = ['id','customer','model','color','vin','se','date','deal','pdi','model_year','vsb_no','enq_number','trim','deposit','bank_name'];
     const actual = (sample && sample.length > 0) ? Object.keys(sample[0]) : [];
     const missing = EXPECTED.filter(c => !actual.includes(c));
     const present = EXPECTED.filter(c => actual.includes(c));
@@ -2824,7 +2824,7 @@ async function doImport(type){
           return d.trim()||null;
         };
         const id = isAGMC
-          ? ('BK-'+(r['Enq Number']||r['VSB No']||r['VSB']||idx+1).toString().trim())
+          ? ('BK-'+(r['VSB No']||r['VSB']||r['Enq Number']||idx+1).toString().trim())
           : ((r.id||genId('BK')).toString().trim());
         // Helper: empty string -> null for optional fields
         const tx = v => (v||'').trim()||null;
@@ -2837,6 +2837,7 @@ async function doImport(type){
           color:         tx(isAGMC ? (r['Colour']||r['Color'])            : r.color),
           vin:           tx(isAGMC ? r['VIN']                             : r.vin),
           vsb_no:        tx(isAGMC ? (r['VSB No']||r['VSB'])             : r.vsb_no),
+          enq_number:    tx(isAGMC ? r['Enq Number']                     : r.enq_number),
           model_year:    tx(isAGMC ? (r['MY']||r['Model Year'])           : r.model_year),
           se:            (()=>{
             const VALID_SES = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
@@ -2965,6 +2966,7 @@ async function doImport(type){
           color:       r.color       || prev.color,
           vin:         r.vin         || prev.vin,
           vsb_no:      r.vsb_no      || prev.vsb_no,
+          enq_number:  r.enq_number  || prev.enq_number,
           model_year:  r.model_year  || prev.model_year,
           trim:        r.trim        || prev.trim,
           deposit:     r.deposit     || prev.deposit,
@@ -3010,8 +3012,38 @@ async function doImport(type){
     const BATCH = 50;
     const total = mergedRecords.length;
     let imported = 0;
+
+    // Auto-detect which columns exist in Supabase by checking a sample row
+    // Strip any columns the DB doesn't know about to avoid silent data loss
+    btn.textContent = 'Checking DB columns…';
+    let allowedCols = null;
+    try {
+      const {data: probe} = await supa.from(table).select('*').limit(1);
+      if(probe && probe.length > 0) allowedCols = new Set(Object.keys(probe[0]));
+    } catch(e){ /* ignore — will try full upsert */ }
+
+    // Filter records to only include columns that exist in DB
+    const safeRecords = allowedCols
+      ? mergedRecords.map(r => {
+          const safe = {};
+          for(const k of Object.keys(r)){
+            if(allowedCols.has(k)) safe[k] = r[k];
+          }
+          return safe;
+        })
+      : mergedRecords;
+
+    // Show which columns are being skipped (missing from DB)
+    if(allowedCols){
+      const allCols = new Set(mergedRecords.flatMap(r => Object.keys(r)));
+      const skipped = [...allCols].filter(c => !allowedCols.has(c));
+      if(skipped.length > 0){
+        toast(`⚠️ Missing DB columns skipped: ${skipped.join(', ')} — run SQL migration to enable them`, 'warn');
+      }
+    }
+
     for(let i=0; i<total; i+=BATCH){
-      const chunk = mergedRecords.slice(i, i+BATCH);
+      const chunk = safeRecords.slice(i, i+BATCH);
       const batchNum = Math.floor(i/BATCH)+1;
       const totalBatches = Math.ceil(total/BATCH);
       btn.textContent = `Importing… batch ${batchNum}/${totalBatches}`;
@@ -3101,7 +3133,8 @@ function openBkModal(id){
       <div class="fg"><label>SE</label><div>${b.se}</div></div>
     </div>
     <div class="fr c3">
-      <div class="fg"><label>VSB No.</label><div style="font-family:'Space Mono',monospace;font-size:12px">${b.vsb_no||b.id||'—'}</div></div>
+      <div class="fg"><label>VSB No.</label><div style="font-family:'Space Mono',monospace;font-size:12px">${b.vsb_no||'—'}</div></div>
+      <div class="fg"><label>Enq. Number</label><div style="font-family:'Space Mono',monospace;font-size:12px">${b.enq_number||'—'}</div></div>
       <div class="fg"><label>Model Year</label><div>${b.model_year||'—'}</div></div>
       <div class="fg"><label>Trim</label><div style="font-size:12px">${b.trim||'—'}</div></div>
     </div>
