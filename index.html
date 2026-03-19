@@ -2609,13 +2609,38 @@ function processFile(file, type){
 }
 
 function parseCSV(text){
-  const lines = text.trim().split('\n');
-  if(lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
-  return lines.slice(1).filter(l=>l.trim()).map(line=>{
-    const vals = line.split(',').map(v=>v.trim().replace(/"/g,''));
+  // Robust CSV parser — handles quoted fields with commas and newlines
+  function parseLine(line){
+    const vals = [];
+    let cur = '', inQ = false;
+    for(let i=0; i<line.length; i++){
+      const ch = line[i];
+      if(ch==='"'){
+        if(inQ && line[i+1]==='"'){ cur+='"'; i++; } // escaped quote
+        else inQ = !inQ;
+      } else if(ch===',' && !inQ){
+        vals.push(cur.trim()); cur='';
+      } else { cur+=ch; }
+    }
+    vals.push(cur.trim());
+    return vals;
+  }
+  // Split into lines respecting quoted newlines
+  const rows = []; let cur='', inQ=false;
+  for(let i=0; i<text.length; i++){
+    const ch=text[i];
+    if(ch==='"') inQ=!inQ;
+    else if((ch==='\n'||ch==='\r') && !inQ){ if(cur.trim()) rows.push(cur); cur=''; continue; }
+    cur+=ch;
+  }
+  if(cur.trim()) rows.push(cur);
+  if(rows.length < 2) return [];
+  // Parse headers — preserve original case for field lookup
+  const headers = parseLine(rows[0]).map(h=>h.replace(/"/g,'').trim());
+  return rows.slice(1).filter(l=>l.trim()).map(line=>{
+    const vals = parseLine(line);
     const obj = {};
-    headers.forEach((h,i)=> obj[h] = vals[i]||'');
+    headers.forEach((h,i)=> obj[h] = (vals[i]||'').replace(/"/g,'').trim());
     return obj;
   });
 }
