@@ -1099,7 +1099,7 @@ function myBks(){
     (b.se===curUser || b.se==='Management') && b.deal!=='Lost'
   );
   if(curRole==='pg')     return DB.bookings.filter(b=>b.pg_assigned===curUser);
-  if(curRole==='driver') return DB.bookings.filter(b=>b.pdi>=2 && b.pdi<7); // PDI In Progress only
+  if(curRole==='driver') return DB.bookings.filter(b=>b.pdi>0); // All PDI active bookings
   return DB.bookings; // sa, admin, ss see all (including Lost for review)
 }
 function myEnqs(){
@@ -1166,7 +1166,7 @@ function renderPDICard(b){
       <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
         ${dealBadge(b.deal)}
         ${canPDI()?`<button class="btn btn-red btn-sm" onclick="openPDIModal('${b.id}')">Push PDI</button>`:''}
-        ${['sa','admin'].includes(curRole)?`<button class="btn btn-green btn-sm" onclick="doAdvancePDI('${b.id}')">Advance →</button>`:''}
+        ${['sa','admin','driver'].includes(curRole)?`<button class="btn btn-green btn-sm" onclick="doAdvancePDI('${b.id}')">Advance →</button>`:''}
       </div>
     </div>
     <div class="cb"><div class="pdi-track">${PDI_STAGES.map((s,i)=>`<div class="pdi-step ${i<b.pdi?'done':i===b.pdi?'curr':''}"><div class="pdidot">${i<b.pdi?'✓':i===b.pdi?'●':'○'}</div><div class="pdilbl">${s}</div></div>`).join('')}</div></div>
@@ -1254,9 +1254,10 @@ const NAV={
   ],
   driver:[
     {l:'Dashboard',       i:'◉', p:'dashboard'},
-    {l:'PDI Update',      i:'🔧',p:'pdi'},
+    {l:'PDI Management',  i:'🔧',p:'pdi'},
     {l:'Demo Cars',       i:'🏎', p:'demo'},
     {l:'Flags',           i:'🚩',p:'flags'},
+    {l:'My Roster',       i:'🗓', p:'roster'},
   ],
   ss:[
     {l:'Overview',          i:'◉', p:'dashboard'},
@@ -1275,45 +1276,153 @@ const NAV={
 };
 
 // ══════════════════════════════════════
+// SHARED HELPERS
+// ══════════════════════════════════════
+function rosterWidget(name){
+  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayIdx = new Date().getDay();
+  const r = ROSTER_DATA.find(x=>x.name===name);
+  if(!r) return '';
+  const todayStatus = r.days[todayIdx];
+  const sc = s => s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
+  return `<div class="card" style="margin-top:14px">
+    <div class="ch">
+      <div class="ct" style="font-size:13px">🗓 My Schedule</div>
+      <span style="font-size:14px;font-weight:800;color:${sc(todayStatus)}">${todayStatus} <span style="font-size:10px;color:var(--faint);font-weight:400">today</span></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;padding:4px 0">
+      ${DAYS.map((d,i)=>{
+        const st=r.days[i];
+        const isT=i===todayIdx;
+        return '<div style="background:var(--surface2);border-radius:6px;padding:5px 2px'+(isT?';outline:2px solid var(--red)':'')+'">'
+          +'<div style="font-size:8px;color:var(--faint);text-transform:uppercase;margin-bottom:2px">'+d+'</div>'
+          +'<div style="font-size:11px;font-weight:700;color:'+sc(st)+'">'+st+'</div></div>';
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════
 // PAGES
 // ══════════════════════════════════════
 const PAGES = {
 
 dashboard(){
-  // ── Driver gets a simplified dashboard ──
+  // ── Driver dashboard ──
   if(curRole==='driver'){
-    const pdiActive = DB.bookings.filter(b=>b.pdi>0&&b.pdi<6);
-    const pdiReady  = DB.bookings.filter(b=>b.pdi===6);
-    const myFlags   = (DB.flags||[]).filter(f=>f.raised_by===curUser);
+    const pdiPending = DB.bookings.filter(b=>b.pdi===1); // Line pushed, needs PDI start
+    const pdiActive  = DB.bookings.filter(b=>b.pdi>1&&b.pdi<6);
+    const pdiReady   = DB.bookings.filter(b=>b.pdi===6);
+    const demoTotal  = (DB.demo||[]).length;
+    const demoAvail  = (DB.demo||[]).filter(d=>d.status==='Available').length;
+    const myFlags    = (DB.flags||[]).filter(f=>f.raised_by===curUser);
+    // Personal roster
+    const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const todayIdx = new Date().getDay();
+    const myRoster = ROSTER_DATA.find(r=>r.name===curUser);
+    const todayStatus = myRoster ? myRoster.days[todayIdx] : '—';
+    const statusColor = todayStatus==='ON'?'var(--green)':todayStatus==='OFF'?'var(--red)':todayStatus==='AM'||todayStatus==='PM'?'var(--amber)':'var(--dim)';
     return `
-    <div class="shd"><div class="sttl">Welcome, ${curUser} 👋</div>
-      <span style="background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.25);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Driver</span>
+    <div class="shd">
+      <div class="sttl">Welcome, ${curUser} 👋</div>
+      <span style="background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.25);padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700">🚗 Driver</span>
     </div>
-    <div class="fr c3">
-      <div class="card" style="text-align:center;padding:20px 12px">
-        <div style="font-size:30px;font-weight:800;color:#22d3ee">${pdiActive.length}</div>
-        <div style="font-size:11px;color:var(--faint);margin-top:4px">PDI In Progress</div>
+
+    <!-- KPI row -->
+    <div class="fr c4" style="margin-bottom:16px">
+      <div class="card" style="text-align:center;padding:18px 8px;cursor:pointer" onclick="goTo('pdi')">
+        <div style="font-size:28px;font-weight:800;color:var(--amber)">${pdiPending.length}</div>
+        <div style="font-size:10px;color:var(--faint);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">PDI Requests</div>
       </div>
-      <div class="card" style="text-align:center;padding:20px 12px">
-        <div style="font-size:30px;font-weight:800;color:var(--green)">${pdiReady.length}</div>
-        <div style="font-size:11px;color:var(--faint);margin-top:4px">Ready for Delivery</div>
+      <div class="card" style="text-align:center;padding:18px 8px;cursor:pointer" onclick="goTo('pdi')">
+        <div style="font-size:28px;font-weight:800;color:#22d3ee">${pdiActive.length}</div>
+        <div style="font-size:10px;color:var(--faint);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">In Progress</div>
       </div>
-      <div class="card" style="text-align:center;padding:20px 12px">
-        <div style="font-size:30px;font-weight:800;color:var(--amber)">${myFlags.length}</div>
-        <div style="font-size:11px;color:var(--faint);margin-top:4px">My Flags</div>
+      <div class="card" style="text-align:center;padding:18px 8px;cursor:pointer" onclick="goTo('pdi')">
+        <div style="font-size:28px;font-weight:800;color:var(--green)">${pdiReady.length}</div>
+        <div style="font-size:10px;color:var(--faint);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Ready</div>
+      </div>
+      <div class="card" style="text-align:center;padding:18px 8px;cursor:pointer" onclick="goTo('demo')">
+        <div style="font-size:28px;font-weight:800;color:var(--red)">${demoAvail}</div>
+        <div style="font-size:10px;color:var(--faint);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Demo Available</div>
       </div>
     </div>
-    ${pdiActive.length ? `<div class="card">
-      <div class="ch"><div class="ct" style="color:#22d3ee">🔧 Needs PDI Update (${pdiActive.length})</div></div>
-      <table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Model</th><th>Current Stage</th><th></th></tr></thead>
-      <tbody>${pdiActive.slice(0,10).map(b=>`<tr>
-        <td class="tm tb">${b.id}</td>
-        <td class="tb">${b.customer}</td>
-        <td style="font-size:11px">${b.model}</td>
-        <td><span class="badge ba" style="font-size:9px">${PDI_STAGES[b.pdi]}</span></td>
-        <td><button class="btn btn-sm" style="background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.3)" onclick="openDriverPDIModal('${b.id}')">🔧 Update</button></td>
-      </tr>`).join('')}</tbody></table>
-    </div>` : `<div class="empty"><div class="empty-ico">✅</div><p>All PDI stages up to date</p></div>`}`;
+
+    <div class="fr c2" style="align-items:flex-start">
+
+      <!-- PDI Requests (line pushed, awaiting) -->
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch"><div class="ct" style="color:var(--amber)">🔧 PDI Requests — Action Needed (${pdiPending.length})</div></div>
+          ${pdiPending.length ? `<table class="tbl"><thead><tr><th>Customer</th><th>Model</th><th>SE</th><th>Tinting</th><th></th></tr></thead>
+          <tbody>${pdiPending.map(b=>`<tr>
+            <td class="tb">${b.customer}</td>
+            <td style="font-size:11px">${b.model} <span style="color:var(--faint)">${b.model_year||''}</span></td>
+            <td style="font-size:11px">${(b.se||'').split(' ')[0]}</td>
+            <td style="font-size:11px">${b.tinting||'None'}</td>
+            <td><button class="btn btn-sm" style="background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.3)" onclick="openPDIModal('${b.id}')">Start PDI</button></td>
+          </tr>`).join('')}</tbody></table>`
+          : `<div style="padding:14px;font-size:12px;color:var(--faint);text-align:center">No pending PDI requests</div>`}
+        </div>
+
+        <!-- In Progress -->
+        <div class="card">
+          <div class="ch"><div class="ct" style="color:#22d3ee">⚙️ In Progress (${pdiActive.length})</div></div>
+          ${pdiActive.length ? `<table class="tbl"><thead><tr><th>Customer</th><th>Model</th><th>Stage</th><th></th></tr></thead>
+          <tbody>${pdiActive.slice(0,8).map(b=>`<tr>
+            <td class="tb">${b.customer}</td>
+            <td style="font-size:11px">${b.model}</td>
+            <td><span class="badge ba" style="font-size:9px">${PDI_STAGES[b.pdi]}</span></td>
+            <td><button class="btn btn-sm" style="background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.3)" onclick="openPDIModal('${b.id}')">Update</button></td>
+          </tr>`).join('')}</tbody></table>`
+          : `<div style="padding:14px;font-size:12px;color:var(--faint);text-align:center">No active PDI</div>`}
+        </div>
+      </div>
+
+      <!-- Right col: Demo summary + My Roster -->
+      <div>
+        <!-- Demo Cars summary -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="ch">
+            <div class="ct">🏎 Demo Cars</div>
+            <button class="btn btn-ghost btn-sm" onclick="goTo('demo')">Manage</button>
+          </div>
+          <div class="fr c2" style="gap:10px;padding:4px 0 8px">
+            <div style="text-align:center">
+              <div style="font-size:22px;font-weight:800;color:var(--green)">${demoAvail}</div>
+              <div style="font-size:10px;color:var(--faint)">Available</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:22px;font-weight:800;color:var(--dim)">${demoTotal-demoAvail}</div>
+              <div style="font-size:10px;color:var(--faint)">In Use / Service</div>
+            </div>
+          </div>
+          ${(DB.demo||[]).slice(0,4).map(d=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid var(--border);font-size:12px">
+              <span style="color:var(--white)">${d.model}</span>
+              <span class="badge ${d.status==='Available'?'bg':d.status==='On Demo'?'ba':'br'}" style="font-size:9px">${d.status}</span>
+            </div>`).join('')}
+        </div>
+
+        <!-- My Roster -->
+        <div class="card">
+          <div class="ch"><div class="ct">🗓 My Schedule</div></div>
+          ${myRoster ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 12px;border-bottom:1px solid var(--border);margin-bottom:10px">
+            <div style="font-size:12px;color:var(--dim)">Today (${DAYS[todayIdx]})</div>
+            <span style="font-size:16px;font-weight:800;color:${statusColor}">${todayStatus}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
+            ${DAYS.map((d,i)=>{
+              const st=myRoster.days[i];
+              const isToday=i===todayIdx;
+              const c=st==='ON'?'var(--green)':st==='OFF'?'var(--red)':st==='AM'||st==='PM'?'var(--amber)':'var(--dim)';
+              return '<div style="background:var(--surface2);border-radius:6px;padding:5px 2px;'+(isToday?'outline:2px solid var(--red);':'')+'"><div style="font-size:8px;color:var(--faint);text-transform:uppercase;margin-bottom:2px">'+d+'</div><div style="font-size:11px;font-weight:700;color:'+c+'">'+st+'</div></div>';
+            }).join('')}
+          </div>` : `<div style="font-size:12px;color:var(--faint);padding:10px">Not in roster</div>`}
+        </div>
+      </div>
+    </div>`;
   }
   const today = new Date().toISOString().split('T')[0];
   const todayStr = new Date().toLocaleDateString('en-AE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -1397,7 +1506,8 @@ dashboard(){
           ${DEAL_STAGES.map(s=>{const cnt=myBk.filter(b=>b.deal===s).length;return `<div class="pipe-st"><div class="pipe-num" style="color:${cnt?'var(--white)':'var(--faint)'}">${cnt}</div><div class="pipe-name">${s}</div></div>`;}).join('')}
         </div>
       </div>
-    </div>`;
+    </div>
+    ${rosterWidget(curUser)}`;
   }
 
   // ╔══════════════════════════════════════════════════════╗
@@ -1473,7 +1583,8 @@ dashboard(){
       <div class="cb" style="padding:8px 16px">
         <div class="pipe-stages">${DEAL_STAGES.map(s=>{const cnt=allBk.filter(b=>b.deal===s).length;return `<div class="pipe-st"><div class="pipe-num" style="color:${cnt?'var(--white)':'var(--faint)'}">${cnt}</div><div class="pipe-name">${s}</div></div>`;}).join('')}</div>
       </div>
-    </div>`;
+    </div>
+    ${rosterWidget(curUser)}`;
   }
 
   // ╔══════════════════════════════════════════════════════╗
@@ -1570,7 +1681,8 @@ dashboard(){
           </div></td>
         </tr>`).join('')}
       </tbody></table>`:`<div class="empty"><div class="empty-ico">🔍</div><p>No cars assigned for condition check</p></div>`}
-    </div>`;
+    </div>
+    ${rosterWidget(curUser)}`;
   }
 
   // ╔══════════════════════════════════════════════════════╗
@@ -1678,7 +1790,8 @@ dashboard(){
           </tr>`).join('')}
         </tbody></table>
       </div>
-    </div>`;
+    </div>
+    ${rosterWidget(curUser)}`;
   }
 
   // ╔══════════════════════════════════════════════════════╗
@@ -1727,8 +1840,8 @@ dashboard(){
     </div>
   </div>
   ${openFlags>0?`<div class="card"><div class="ch"><div class="ct">🚩 Active Flags</div><span class="badge br">${openFlags} Open</span></div><div class="cb">${DB.flags.filter(f=>f.status==='Open').map(f=>`<div class="flg"><div style="font-size:16px">🚩</div><div style="flex:1"><div class="flg-ttl">${f.title}</div><div class="flg-body">${f.body}</div><div class="flg-meta">Raised by ${f.raised_by} · SE: ${f.se}</div></div>${canDeal()?`<button class="btn btn-ghost btn-xs" onclick="doResolveFlag('${f.id}')">Resolve</button>`:''}  </div>`).join('')}</div></div>`:''}
-  `;
-},
+  `
+    },
 
 bookings(){
   const bks=myBks(); const showSE=curRole!=='se';
@@ -3194,7 +3307,8 @@ function showPreview(type, rows, filename){
 
 function showPreviewError(type, msg){
   const previewEl = document.getElementById(type==='bookings'?'bk-preview':'eq-preview');
-  if(previewEl) previewEl.innerHTML = `<div class="up-err">❌ ${msg}</div>`;
+  if(previewEl) previewEl.innerHTML = `<div class="up-err">❌ ${msg}</div>
+    ${rosterWidget(curUser)}`;
 }
 
 function clearUpload(type){
