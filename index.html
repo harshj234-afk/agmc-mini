@@ -943,7 +943,7 @@ const USER_DB = [
   {name:'Harsh Jain',         role:'se',    pin:'1105'},
   {name:'Mohamed Aboelella',  role:'se',    pin:'4099'},
   {name:'Nurgiza Shamshibekova',role:'se',  pin:'8680'},
-  {name:'Nourhan Hassan',     role:'sa',    pin:'1105'},
+  {name:'Nourhan Walid',     role:'sa',    pin:'1105'},
   {name:'Francis de Castro Escueta',role:'sa',pin:'0687'},
   {name:'Faizan Asim',        role:'pg',    pin:'6796'},
   {name:'Ege Andac',          role:'pg',    pin:'6506'},
@@ -956,7 +956,7 @@ const USER_DB = [
 ];
 const USERS = {
   se:    ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'],
-  sa:    ['Nourhan Hassan','Francis de Castro Escueta'],
+  sa:    ['Nourhan Walid','Francis de Castro Escueta'],
   pg:    ['Faizan Asim','Ege Andac'],
   admin: ['Rachael Fernandes','Harsh Jain'],
   mg:    ['Maham Jawed','Khawla Saleh','Khouloud Zaidi'],
@@ -976,7 +976,7 @@ const ROSTER_DATA = [
   {name:'Harsh Jain',role:'SE/Admin',days:['ON','OFF','ON','ON','ON','ON','OFF']},
   {name:'Mohamed Aboelella',role:'SE',days:['ON','ON','ON','OFF','ON','PM','OFF']},
   {name:'Nurgiza Shamshibekova',role:'SE',days:['OFF','ON','ON','ON','ON','AM','OFF']},
-  {name:'Nourhan Hassan',role:'SA',days:['ON','ON','ON','ON','ON','OFF','OFF']},
+  {name:'Nourhan Walid',role:'SA',days:['ON','ON','ON','ON','ON','OFF','OFF']},
   {name:'Francis de Castro Escueta',role:'SA',days:['ON','OFF','ON','ON','ON','ON','OFF']},
   {name:'Faizan Asim',role:'PG',days:['AM','PM','ON','ON','OFF','ON','OFF']},
   {name:'Ege Andac',role:'PG',days:['ON','ON','AM','PM','ON','OFF','OFF']},
@@ -2262,7 +2262,7 @@ async function doRaiseFlag(bookingId){
     severity:document.getElementById('fl-sev')?.value||'Medium',
     status:'Open',
     se:b?.se||'',
-    sa:'Nourhan Hassan',
+    sa:'Nourhan Walid',
   };
   if(!obj.body){toast('Please describe the issue','warn');return;}
   const {error}=await supa.from('flags').insert([obj]);
