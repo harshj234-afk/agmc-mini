@@ -3051,6 +3051,25 @@ async function doImport(type){
       if(error) throw new Error(`Batch ${batchNum} failed: ${error.message}`);
       imported += chunk.length;
     }
+    // ── CLEANUP: Remove stale VSB-based records replaced by ENQ-based ones ──
+    if(type === 'bookings'){
+      // New records use BK-{EnqNumber}. Old records used BK-{VSBNo}.
+      // Find old stale IDs: records whose vsb_no matches a newly imported vsb_no
+      // but whose id is NOT in the new import list
+      const newIds = new Set(safeRecords.map(r => r.id));
+      const newVsbs = new Set(safeRecords.map(r => r.vsb_no).filter(Boolean));
+      try {
+        const {data: allExisting} = await supa.from('bookings').select('id,vsb_no');
+        const staleIds = (allExisting||[])
+          .filter(r => !newIds.has(r.id) && r.vsb_no && newVsbs.has(r.vsb_no))
+          .map(r => r.id);
+        if(staleIds.length > 0){
+          await supa.from('bookings').delete().in('id', staleIds);
+          console.log('Cleaned stale VSB-based records:', staleIds);
+        }
+      } catch(e){ console.warn('Cleanup skipped:', e.message); }
+    }
+
     // Summary
     const summaryMsg = newCount > 0 && updatedCount > 0
       ? `${newCount} new · ${updatedCount} updated`
