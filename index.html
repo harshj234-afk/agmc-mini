@@ -1809,7 +1809,7 @@ dashboard(){
   const totalInv    = allInv.length;
   const totalReg    = allRegs.length;
   const totalDel    = allDels.filter(d=>d.status==='Delivered').length;
-  const testDrives  = allEnq.filter(e=>e.interest==='Test Drive').length;
+  const testDrives  = allEnq.filter(e=>e.test_drive===true||e.test_drive==='true').length;
   const pdiAct      = bks.filter(b=>b.pdi>0&&b.pdi<6).length;
   const readyD      = bks.filter(b=>b.deal==='Ready for Delivery').length;
   const openFlags   = (DB.flags||[]).filter(f=>f.status==='Open').length;
@@ -1826,7 +1826,7 @@ dashboard(){
     bookings: bks.filter(b=>b.se===se&&b.deal!=='Lost').length,
     delivered: bks.filter(b=>b.se===se&&b.deal==='Delivered').length,
     enquiries: allEnq.filter(e=>e.se===se).length,
-    testDrives: allEnq.filter(e=>e.se===se&&e.interest==='Test Drive').length,
+    testDrives: allEnq.filter(e=>e.se===se&&(e.test_drive===true||e.test_drive==='true')).length,
   }));
   const maxBk = Math.max(...seRatios.map(r=>r.bookings), 1);
 
@@ -1885,78 +1885,91 @@ dashboard(){
     </div>`).join('')}
   </div>
 
-  <!-- Row 3: Deal Pipeline + SE Booking Ratio -->
+  <!-- Row 3: Deal Pipeline + Booking Ratio -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
 
     <!-- Deal Pipeline -->
     <div class="card">
-      <div class="ch"><div class="ct">💼 Deal Pipeline</div></div>
+      <div class="ch"><div class="ct">💼 Deal Pipeline</div><span style="font-size:10px;color:var(--faint)">${totalBk} active</span></div>
       <div style="padding:4px 0">
-        ${pipelineCounts.filter(p=>p.count>0).map(p=>{
-          const pct=Math.round(p.count/Math.max(totalBk,1)*100);
-          const col=p.stage==='Delivered'?'var(--green)':p.stage==='Invoiced'?'var(--amber)':p.stage==='Registered'?'#a855f7':p.stage==='Ready for Delivery'?'#22d3ee':'var(--blue)';
-          return `<div style="margin-bottom:8px">
-            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-              <span style="color:var(--dim)">${p.stage}</span>
-              <span style="color:var(--faint);font-family:'Space Mono',monospace">${p.count} <span style="font-size:9px">(${pct}%)</span></span>
-            </div>
-            <div class="pb"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
-          </div>`;
-        }).join('')}
+        ${(()=>{
+          const stageColors={'Delivered':'var(--green)','Invoiced':'var(--amber)','Registered':'#a855f7','Ready for Delivery':'#22d3ee'};
+          return pipelineCounts.filter(p=>p.count>0).map(p=>{
+            const pct=Math.round(p.count/Math.max(totalBk,1)*100);
+            const col=stageColors[p.stage]||'var(--blue)';
+            return `<div style="margin-bottom:7px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+                <span style="color:var(--dim)">${p.stage}</span>
+                <span style="color:var(--faint);font-family:'Space Mono',monospace">${p.count} <span style="font-size:9px">(${pct}%)</span></span>
+              </div>
+              <div class="pb"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
+            </div>`;
+          }).join('');
+        })()}
       </div>
     </div>
 
-    <!-- SE Booking Ratio -->
+    <!-- SE Bookings panel -->
     <div class="card">
-      <div class="ch"><div class="ct">📊 Booking Ratio by SE</div></div>
+      <div class="ch"><div class="ct">📋 Bookings by SE</div></div>
       <table style="width:100%;font-size:11px;border-collapse:collapse">
         <thead><tr>
-          <th style="text-align:left;padding:4px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">SE</th>
-          <th style="text-align:center;padding:4px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Bookings</th>
-          <th style="text-align:center;padding:4px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">TD</th>
-          <th style="text-align:left;padding:4px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Bar</th>
+          <th style="text-align:left;padding:5px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Sales Executive</th>
+          <th style="text-align:center;padding:5px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Bookings</th>
+          <th style="text-align:center;padding:5px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Delivered</th>
+          <th style="text-align:left;padding:5px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border);width:35%">Share</th>
         </tr></thead>
         <tbody>
-          ${seRatios.map(r=>`<tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:7px 8px;font-weight:600;color:var(--white)">${r.se}</td>
-            <td style="text-align:center;padding:7px 6px;color:var(--red);font-weight:700">${r.bookings}</td>
-            <td style="text-align:center;padding:7px 6px;color:#22d3ee;font-size:10px">${r.testDrives}</td>
-            <td style="padding:7px 8px">
-              <div style="background:var(--surface2);border-radius:3px;height:6px;width:100%">
-                <div style="background:var(--red);border-radius:3px;height:6px;width:${Math.round(r.bookings/maxBk*100)}%;transition:width .3s"></div>
-              </div>
-            </td>
-          </tr>`).join('')}
+          ${seRatios.map(r=>'<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 8px;font-weight:600;color:var(--white)">'+r.se+'</td><td style="text-align:center;padding:8px 6px;color:var(--red);font-weight:700">'+r.bookings+'</td><td style="text-align:center;padding:8px 6px;color:var(--green);font-size:10px">'+r.delivered+'</td><td style="padding:8px 8px"><div style="background:var(--surface2);border-radius:3px;height:6px"><div style="background:var(--red);border-radius:3px;height:6px;width:'+Math.round(r.bookings/maxBk*100)+'%"></div></div></td></tr>').join('')}
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Row 4: Enquiry Source + Today Flags -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-
-    <!-- Showroom Performance / Source Breakdown -->
-    <div class="card">
-      <div class="ch"><div class="ct">📈 Enquiry Sources</div><span style="font-size:10px;color:var(--faint)">${allEnq.length} total</span></div>
-      ${topSources.map(([src,cnt])=>{
-        const pct=Math.round(cnt/maxSrc*100);
-        return `<div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-            <span style="color:var(--dim)">${src}</span>
-            <span style="color:var(--faint);font-family:'Space Mono',monospace">${cnt}</span>
-          </div>
-          <div class="pb"><div class="pf pf-red" style="width:${pct}%"></div></div>
-        </div>`;
+  <!-- Row 3b: Test Drives by SE -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><div class="ct">🏎 Test Drives by SE</div><span style="font-size:10px;color:var(--faint)">${testDrives} total</span></div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:8px 0">
+      ${seRatios.map(r=>{
+        const pct=Math.round(r.testDrives/Math.max(testDrives,1)*100);
+        return '<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#22d3ee">'+r.testDrives+'</div><div style="font-size:9px;color:var(--faint);text-transform:uppercase;margin:3px 0">'+r.se+'</div><div style="background:var(--surface2);border-radius:3px;height:4px;margin:0 4px"><div style="background:#22d3ee;border-radius:3px;height:4px;width:'+pct+'%"></div></div></div>';
       }).join('')}
     </div>
+  </div>
 
-    <!-- Test Drives + Open Enquiries recent -->
+  <!-- Row 4: Demo Cars + Recent Enquiries -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+
+    <!-- Demo Cars -->
     <div class="card">
-      <div class="ch"><div class="ct">🔍 Recent Open Enquiries</div><button class="btn btn-ghost btn-xs" onclick="goTo('enquiries')">All →</button></div>
+      <div class="ch">
+        <div class="ct">🏎 Demo Cars</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge bg" style="font-size:9px">${(DB.demo||[]).filter(d=>d.status==='Available').length} Available</span>
+          <button class="btn btn-ghost btn-xs" onclick="goTo('demo')">Manage →</button>
+        </div>
+      </div>
+      ${(DB.demo||[]).length ? `
       <table class="tbl" style="font-size:11px">
-        <thead><tr><th>Customer</th><th>Model</th><th>SE</th><th>Lead</th></tr></thead>
+        <thead><tr><th>Model</th><th>Color</th><th>Mileage</th><th>Status</th></tr></thead>
         <tbody>
-          ${allEnq.filter(e=>e.status==='Open'||e.status==='Follow-Up').slice(0,6).map(e=>`<tr>
+          ${(DB.demo||[]).map(d=>`<tr>
+            <td class="tb" style="font-size:11px">${d.model||'—'}</td>
+            <td style="font-size:10px;color:var(--faint)">${d.color||'—'}</td>
+            <td style="font-size:10px;font-family:'Space Mono',monospace">${d.mileage||'—'}</td>
+            <td><span class="badge ${d.status==='Available'?'bg':d.status==='On Demo'?'ba':'br'}" style="font-size:9px">${d.status||'—'}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div style="padding:16px;text-align:center;font-size:12px;color:var(--faint)">No demo cars added yet</div>`}
+    </div>
+
+    <!-- Recent Open Enquiries -->
+    <div class="card">
+      <div class="ch"><div class="ct">🔍 Open Enquiries</div><button class="btn btn-ghost btn-xs" onclick="goTo('enquiries')">All →</button></div>
+      <table class="tbl" style="font-size:11px">
+        <thead><tr><th>Customer</th><th>Model</th><th>SE</th><th>Type</th></tr></thead>
+        <tbody>
+          ${allEnq.filter(e=>e.status==='Open'||e.status==='Follow-Up').slice(0,7).map(e=>`<tr>
             <td class="tb" style="font-size:10px">${(e.customer||'—').split(' ').slice(0,2).join(' ')}</td>
             <td style="font-size:10px">${(e.model||'—').split(' ').slice(0,3).join(' ')}</td>
             <td style="font-size:10px">${(e.se||'').split(' ')[0]}</td>
@@ -3636,16 +3649,18 @@ async function doImport(type){
           const rawProgress = (r['Progress Code']||'Enq').trim();
           const rawSource   = (r['Source of Business']||'').trim().toUpperCase();
           const rawLead     = (r['Lead Strength from Enquiry']||'COLD').trim().toUpperCase();
+          const demoNum = (r['Last Demo Booking Number']||'0').toString().trim();
           return {
-            id:       'ENQ-'+(r['Enquiry Number']||idx+1).toString().trim(),
-            customer: (r['Customer Full Name']||'').trim(),
-            model:    (r['Vehicle Desc']||'').trim(),
-            interest: interestMap[rawLead]||'Enquiry',
-            source:   sourceMap[rawSource]||r['Source of Business']||'Other',
-            date:     parseDate(r['Next Action Date'])||new Date().toISOString().split('T')[0],
-            status:   progressMap[rawProgress]||'Open',
-            se:       (r['User Name']||'').trim()||'Unassigned',
-            notes:    [
+            id:         'ENQ-'+(r['Enquiry Number']||idx+1).toString().trim(),
+            customer:   (r['Customer Full Name']||'').trim(),
+            model:      (r['Vehicle Desc']||'').trim(),
+            interest:   interestMap[rawLead]||'Enquiry',
+            source:     sourceMap[rawSource]||r['Source of Business']||'Other',
+            date:       parseDate(r['Next Action Date'])||new Date().toISOString().split('T')[0],
+            status:     progressMap[rawProgress]||'Open',
+            se:         (r['User Name']||'').trim()||'Unassigned',
+            test_drive: demoNum !== '0' && demoNum !== '',
+            notes:      [
               r['Lead Strength from Enquiry']?`Lead: ${r['Lead Strength from Enquiry']}`:'',
               r['Mobile']?`📱 ${r['Mobile']}` :'',
               r['E-mail Address']?`✉️ ${r['E-mail Address']}`:'',
@@ -3654,15 +3669,16 @@ async function doImport(type){
           };
         } else {
           return {
-            id:       (r.id||genId('ENQ')).toString().trim(),
-            customer: r.customer||'',
-            model:    r.model||'',
-            interest: r.interest||'Purchase',
-            source:   r.source||'Walk-In',
-            date:     r.date||new Date().toISOString().split('T')[0],
-            status:   r.status||'Open',
-            se:       r.se||'Unassigned',
-            notes:    r.notes||'',
+            id:         (r.id||genId('ENQ')).toString().trim(),
+            customer:   r.customer||'',
+            model:      r.model||'',
+            interest:   r.interest||'Purchase',
+            source:     r.source||'Walk-In',
+            date:       r.date||new Date().toISOString().split('T')[0],
+            status:     r.status||'Open',
+            se:         r.se||'Unassigned',
+            test_drive: r.test_drive||false,
+            notes:      r.notes||'',
           };
         }
       });
