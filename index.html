@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>AGMC — MINI Sales Tool</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -59,7 +59,7 @@ html{height:100%;height:-webkit-fill-available;}body{height:100%;height:-webkit-
 .sb-uname{font-size:12px;font-weight:600;color:var(--white);line-height:1.2;}
 .sb-urole{font-size:10px;color:var(--dim);}
 .sb-nav{flex:1;padding:8px 0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0;}
-.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;font-size:13px;font-weight:500;color:var(--dim);cursor:pointer;border-left:2px solid transparent;transition:all .15s;position:relative;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px 18px;font-size:13px;font-weight:500;color:var(--dim);cursor:pointer;border-left:2px solid transparent;transition:all .15s;position:relative;}
 .nav-item:hover{color:var(--silver);background:var(--surface);}
 .nav-item.active{color:var(--white);background:rgba(226,0,26,.08);border-left-color:var(--red);}
 .nav-item .ni{font-size:14px;width:17px;text-align:center;}
@@ -307,6 +307,56 @@ textarea.fc{resize:vertical;min-height:70px;}
 .pin-status-warn{font-size:10px;color:var(--amber);display:flex;align-items:center;gap:5px;margin-top:6px;}
 .pin-status-exp{font-size:10px;color:var(--red);display:flex;align-items:center;gap:5px;margin-top:6px;}
 .pin-strength{height:4px;border-radius:4px;margin-top:6px;transition:all .3s;}
+/* BOOKING MODAL FOOTER BUTTONS */
+.bmf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
+/* ── BOOKING MODAL ACTIONS (clean redesign) ── */
+.bm-actions{width:100%;padding:2px 0 0;}
+.bma-row{display:flex;gap:8px;margin-bottom:8px;align-items:stretch;}
+.bma-row > *{flex:1;min-width:0;}
+.bma-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;padding:11px 6px;border-radius:10px;cursor:pointer;
+  transition:all .16s;border:1px solid transparent;
+  font-family:'Outfit',sans-serif;text-align:center;min-height:62px;
+}
+.bma-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.bma-btn:active{transform:scale(.96);}
+.bma-ico{font-size:20px;line-height:1;}
+.bma-lbl{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;line-height:1.2;}
+.bma-sm{min-height:36px !important;padding:7px 12px !important;flex-direction:row !important;gap:6px !important;}
+.bma-badge-done{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;min-height:62px;padding:11px 6px;border-radius:10px;
+  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);
+}
+/* colours */
+.bma-blue  {background:rgba(59,130,246,.1); color:#60a5fa; border-color:rgba(59,130,246,.2);}
+.bma-blue:hover  {background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.45);}
+.bma-purple{background:rgba(139,92,246,.1); color:#a78bfa; border-color:rgba(139,92,246,.2);}
+.bma-purple:hover{background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.45);}
+.bma-green {background:rgba(34,197,94,.1);  color:#4ade80; border-color:rgba(34,197,94,.2);}
+.bma-green:hover {background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);}
+.bma-amber {background:rgba(245,158,11,.1); color:#fbbf24; border-color:rgba(245,158,11,.2);}
+.bma-amber:hover {background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.45);}
+.bma-red   {background:rgba(226,0,26,.07);  color:#f87171; border-color:rgba(226,0,26,.2);}
+.bma-red:hover   {background:rgba(226,0,26,.14);border-color:rgba(226,0,26,.45);}
+/* advance deal strip */
+.bma-advance{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 16px;border-radius:10px;margin-bottom:8px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--border);color:var(--dim);
+  font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
+  transition:all .16s;
+}
+.bma-advance:hover{background:rgba(255,255,255,.05);border-color:var(--faint);color:var(--white);}
+/* footer strip */
+.bma-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:10px;border-top:1px solid var(--border);
+}
+/* legacy — kept for backward compat */
+.bmf-footer{display:flex;align-items:center;justify-content:space-between;
+  padding-top:10px;border-top:1px solid var(--border);}
 /* MISC */
 hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
 .empty{text-align:center;padding:40px 16px;color:var(--faint);}
@@ -916,7 +966,7 @@ const ROLE_LABEL = {se:'Sales Executive',sa:'Sales Assistance',pg:'Product Geniu
 const ROLE_COLOR = {se:'#3b82f6',sa:'#a855f7',pg:'#22c55e',admin:'#f59e0b',mg:'#ec4899',ss:'#E2001A'};
 const MODELS = ['F65 5D Hatch Cooper C','F65 5D Hatch Cooper C Essential','F65 5D Hatch Cooper S','F65 5D Hatch Cooper S - Accessorised','F65 5D Hatch Cooper S JCW Kit','F66 3D Hatch Cooper C','F66 3D Hatch Cooper C Essential','F66 3D Hatch Cooper JCW','F66 3D Hatch Cooper JCW Victory Edition','F66 3D Hatch Cooper S','F66 3D Hatch Cooper S - Accessorised','F66 3D Hatch Cooper S JCW Kit','F67 Convertible JCW','F67 Convertible S','F67 Convertible S JCW Kit','J01 3D Hatch Cooper SE - Accessorised','J05 Aceman SE','J05 Aceman SE JCW Kit','J05 Aceman SE Launch Edition','U25 Countryman C Essential Trim','U25 Countryman C Favoured Trim','U25 Countryman Cooper S ALL4','U25 Countryman Cooper S ALL4 JCW Kit','U25 Countryman JCW ALL4','U25 Countryman SE ALL4'];
 const PDI_STAGES = ['Line Push','Workshop Received','PDI In Progress','PDI Complete','Tinting Done','Ceramic Done','Ready for Delivery'];
-const DEAL_STAGES = ['Finance Pending','Finance Approved','LPO Received','LOI Received','Insured','Registered','Ready for Delivery','Delivered','Lost'];
+const DEAL_STAGES = ['Finance Pending','Finance Approved','LPO Received','LOI Received','Insured','Registered','Ready for Delivery','Invoiced','Delivered','Lost'];
 const COLORS = ['Pepper White','Midnight Black','British Racing Green','Chili Red','Rooftop Grey','Island Blue','Zesty Yellow','Sage Green','Nanuq White'];
 const SOURCES = ['Walk-In','Phone','Website','Referral','Social Media','Event','Email'];
 const ROSTER_DATA = [
@@ -953,260 +1003,46 @@ async function seedIfEmpty(){
 }
 
 async function loadAll(){
-  try {
-    const [b,e,v,f,d,n,dl] = await Promise.all([
-      supa.from('bookings').select('*').order('id',{ascending:false}),
-      supa.from('enquiries').select('*').order('id',{ascending:false}),
-      supa.from('viewing_requests').select('*').order('id',{ascending:false}),
-      supa.from('flags').select('*').order('id',{ascending:false}),
-      supa.from('demo_cars').select('*').order('id',{ascending:true}),
-      supa.from('notifications').select('*').order('id',{ascending:false}),
-      supa.from('deliveries').select('*').order('delivery_date',{ascending:true}),
-      supa.from('booking_updates').select('*').order('created_at',{ascending:false}),
-      supa.from('invoices').select('*').order('created_at',{ascending:false}),
-      supa.from('registrations').select('*').order('created_at',{ascending:false}),
-    ]);
-    if(b.error) console.error('Bookings error:',b.error.message);
-    if(e.error) console.error('Enquiries error:',e.error.message);
-    DB.bookings      = b.data||[];
-    DB.enquiries     = e.data||[];
-    DB.viewing       = v.data||[];
-    DB.flags         = f.data||[];
-    DB.demo          = d.data||[];
-    DB.notifications = n.data||[];
-    DB.deliveries    = dl.data||[];
-    console.log(`Loaded: ${DB.bookings.length} bookings, ${DB.enquiries.length} enquiries, ${DB.deliveries.length} deliveries`);
-  } catch(err){
-    console.error('loadAll failed:',err);
-    toast('Failed to load data — check connection','err');
+  const BASE = SUPA_URL+'/rest/v1/';
+  async function q(table, order){
+    try {
+      const url = BASE+table+'?select=*'+(order?'&order='+order:'');
+      const r = await fetch(url, {
+        headers:{
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer '+SUPA_KEY,
+          'Accept': 'application/json'
+        }
+      });
+      if(!r.ok){ console.warn(table,r.status); return []; }
+      const d = await r.json();
+      return Array.isArray(d) ? d : [];
+    } catch(e){ console.warn(table+':',e.message); return []; }
   }
+  DB.bookings      = await q('bookings','id.desc');
+  DB.enquiries     = await q('enquiries','id.desc');
+  DB.viewing       = await q('viewing_requests','id.desc');
+  DB.flags         = await q('flags','id.desc');
+  DB.demo          = await q('demo_cars','id.asc');
+  DB.notifications = await q('notifications','id.desc');
+  DB.deliveries    = await q('deliveries','delivery_date.asc');
+  DB.updates       = await q('booking_updates','created_at.desc');
+  DB.invoices      = await q('invoices','created_at.desc');
+  DB.registrations = await q('registrations','created_at.desc');
+  console.log('Loaded:',DB.bookings.length,'bookings,',DB.enquiries.length,'enquiries,',DB.deliveries.length,'deliveries');
 }
 
-// ══════════════════════════════════════
-// LOGIN
-// ══════════════════════════════════════
-function onRoleChange(){
-  const r=document.getElementById('role-sel').value;
-  const s=document.getElementById('user-sel');
-  s.innerHTML='<option value="">— Select name —</option>';
-  if(r&&USERS[r]) USERS[r].forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;s.appendChild(o);});
-}
-
-// ── PIN MANAGEMENT ────────────────────────────────────────
-const PIN_EXPIRY_DAYS = 90;
-
-function getPINData(name){
-  try {
-    const raw = localStorage.getItem('agmc_pin_'+name.replace(/\s+/g,'_'));
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-
-function setPINData(name, pin){
-  const data = { pin, changed: new Date().toISOString() };
-  localStorage.setItem('agmc_pin_'+name.replace(/\s+/g,'_'), JSON.stringify(data));
-}
-
-function getPINForUser(name, defaultPin){
-  const stored = getPINData(name);
-  return stored ? stored.pin : defaultPin;
-}
-
-function getPINDaysLeft(name){
-  const stored = getPINData(name);
-  if(!stored) return PIN_EXPIRY_DAYS; // never changed — uses default, show full
-  const changed = new Date(stored.changed);
-  const now = new Date();
-  const daysSince = Math.floor((now - changed) / (1000*60*60*24));
-  return Math.max(0, PIN_EXPIRY_DAYS - daysSince);
-}
-
-function getPINExpired(name){
-  const stored = getPINData(name);
-  if(!stored) return false; // default PIN never expires until changed
-  return getPINDaysLeft(name) === 0;
-}
-
-async function doLogin(){
-  const r=document.getElementById('role-sel').value;
-  const u=document.getElementById('user-sel').value;
-  const pin=document.getElementById('pin-in').value.trim();
-  if(!r||!u){toast('Please select your role and name.','warn');return;}
-  if(!pin){toast('Please enter your PIN.','warn');return;}
-  // Check PIN — use stored PIN if user has changed it, else use default
-  const userDefault = USER_DB.find(x=>x.name===u&&x.role===r);
-  if(!userDefault){toast('User not found.','err');return;}
-  const effectivePin = getPINForUser(u, userDefault.pin);
-  if(pin !== effectivePin){
-    toast('Incorrect PIN. Please try again.','err');
-    document.getElementById('pin-in').style.animation='shake 0.4s ease';
-    setTimeout(()=>document.getElementById('pin-in').style.animation='',500);
-    document.getElementById('pin-in').value='';
-    document.getElementById('pin-in').focus();
-    return;
-  }
-  // Check PIN expiry
-  if(getPINExpired(u)){
-    toast('Your PIN has expired. Please set a new one.','warn');
-    document.getElementById('pin-in').value='';
-    // Force PIN change on login
-    setTimeout(()=>showForcedPINChange(u,r),300);
-    return;
-  }
-  const btn=document.getElementById('login-btn');
-  btn.disabled=true; btn.textContent='Loading…';
-  curRole=r; curUser=u;
-  sessionStorage.setItem('agmc_role', r);
-  sessionStorage.setItem('agmc_user', u);
-  await loadAll();
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').classList.add('on');
-  btn.disabled=false; btn.textContent='Enter →';
-  initApp();
-  // Warn if PIN expiring soon (≤14 days)
-  const daysLeft = getPINDaysLeft(u);
-  if(daysLeft <= 14 && daysLeft > 0){
-    setTimeout(()=>toast(`⚠️ PIN expires in ${daysLeft} day${daysLeft===1?'':'s'} — please change it soon.`,'warn'), 1500);
-  }
-}
-
-function showForcedPINChange(userName, userRole){
-  openM('🔑 PIN Expired — Set New PIN',`
-    <div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.2);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--red)">
-      ⚠️ Your PIN has expired after ${PIN_EXPIRY_DAYS} days. You must set a new PIN to continue.
-    </div>
-    <div class="fg"><label>New PIN (4 digits)</label>
-      <input type="password" class="fc" id="fpc-new" maxlength="4" placeholder="Enter new 4-digit PIN" oninput="checkPINStrength('fpc-new','fpc-strength','fpc-match','fpc-confirm')"/>
-      <div id="fpc-strength" class="pin-strength" style="background:var(--border2);width:0%"></div>
-    </div>
-    <div class="fg"><label>Confirm New PIN</label>
-      <input type="password" class="fc" id="fpc-confirm" maxlength="4" placeholder="Repeat new PIN" oninput="checkPINStrength('fpc-new','fpc-strength','fpc-match','fpc-confirm')"/>
-      <div id="fpc-match" style="font-size:10px;color:var(--faint);margin-top:4px"></div>
-    </div>
-  `,`<button class="btn btn-red" onclick="doForcedPINSave('${userName}','${userRole}')">Set New PIN & Continue →</button>`);
-}
-
-async function doForcedPINSave(userName, userRole){
-  const np = document.getElementById('fpc-new')?.value.trim();
-  const cp = document.getElementById('fpc-confirm')?.value.trim();
-  if(!np||np.length!==4||!/^\d{4}$/.test(np)){toast('PIN must be exactly 4 digits','warn');return;}
-  if(np!==cp){toast('PINs do not match','warn');return;}
-  setPINData(userName, np);
-  closeM();
-  toast('New PIN set ✓ Logging you in…','ok');
-  // Auto login after forced change
-  setTimeout(async()=>{
-    curRole=userRole; curUser=userName;
-    sessionStorage.setItem('agmc_role',userRole);
-    sessionStorage.setItem('agmc_user',userName);
-    await loadAll();
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').classList.add('on');
-    initApp();
-  }, 800);
-}
-
-function doLogout(){
-  sessionStorage.removeItem('agmc_role');
-  sessionStorage.removeItem('agmc_user');
-  document.getElementById('app').classList.remove('on');
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('role-sel').value='';
-  document.getElementById('user-sel').innerHTML='<option>— Select role first —</option>';
-  document.getElementById('pin-in').value='';
-  curUser=null;curRole=null;
-}
-
-// ══════════════════════════════════════
-// INIT APP
-// ══════════════════════════════════════
 function initApp(){
-  const av=document.getElementById('sb-av');
-  const ini=curUser.replace('&','and').split(' ').filter(w=>w.length>0).slice(0,2).map(w=>w[0]).join('');
-  av.textContent=ini; av.style.background=ROLE_COLOR[curRole];
-  document.getElementById('sb-name').textContent=curUser;
-  document.getElementById('sb-role').textContent=ROLE_LABEL[curRole];
-  const now=new Date();
-  document.getElementById('tb-date').textContent=now.toLocaleDateString('en-AE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  buildNav(); renderNotif(); setupMobileNav(); goTo(NAV[curRole][0].page);
-  // Show PIN expiry warning in sidebar footer
-  const daysLeft = getPINDaysLeft(curUser);
-  const pinBtn = document.querySelector('.sb-foot button:first-child');
-  if(pinBtn && daysLeft <= 30){
-    const color = daysLeft <= 7 ? 'var(--red)' : daysLeft <= 14 ? 'var(--amber)' : 'var(--green)';
-    pinBtn.style.borderColor = color;
-    pinBtn.style.color = color;
-    pinBtn.innerHTML = `🔑 PIN — ${daysLeft}d left`;
-  }
+  buildNav();
+  const firstPage = (NAV[curRole]||[])[0]?.p || 'dashboard';
+  goTo(firstPage);
+  renderNotif();
+  // Update topbar user info
+  const uel = document.getElementById('tb-user');
+  if(uel) uel.textContent = curUser;
+  const rel = document.getElementById('tb-role');
+  if(rel) rel.textContent = (NAV[curRole]||[])[0]?.l ? ({se:'Sales Executive',sa:'Sales Assistance',pg:'Product Genius',admin:'Admin',mg:'Meet & Greet',ss:'Sales Supervisor'}[curRole]||curRole) : curRole;
 }
-
-const NAV={
-  se:[
-    {l:'Dashboard',         i:'◉', p:'dashboard'},
-    {l:'My Bookings',       i:'📋',p:'bookings'},
-    {l:'Enquiries',         i:'🔍',p:'enquiries'},
-    {l:'PDI Tracker',       i:'🔧',p:'pdi'},
-    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
-    {l:'Viewing Requests',  i:'👁', p:'viewing'},
-    {l:'Invoice',           i:'🧾',p:'invoice'},
-    {l:'Demo Cars',         i:'🏎', p:'demo'},
-  ],
-  sa:[
-    {l:'Dashboard',         i:'◉', p:'dashboard'},
-    {l:'All Bookings',      i:'📋',p:'bookings'},
-    {l:'PDI Management',    i:'🔧',p:'pdi'},
-    {l:'Viewing Requests',  i:'👁', p:'viewing'},
-    {l:'Invoice',           i:'🧾',p:'invoice'},
-    {l:'Registration',      i:'🪪', p:'registration'},
-    {l:'Data Upload',       i:'📤',p:'upload'},
-    {l:'Deal Progress',     i:'💼',p:'deals'},
-    {l:'Flags',             i:'🚩',p:'flags'},
-    {l:'Demo Cars',         i:'🏎', p:'demo'},
-  ],
-  pg:[
-    {l:'Dashboard',         i:'◉', p:'dashboard'},
-    {l:'My Deliveries',     i:'🚗',p:'delivery'},
-    {l:'Car Condition',     i:'🔍',p:'condition'},
-    {l:'Flags',             i:'🚩',p:'flags'},
-    {l:'Demo Cars',         i:'🏎', p:'demo'},
-  ],
-  admin:[
-    {l:'Dashboard',         i:'◉', p:'dashboard'},
-    {l:'All Bookings',      i:'📋',p:'bookings'},
-    {l:'Enquiries',         i:'🔍',p:'enquiries'},
-    {l:'PDI Management',    i:'🔧',p:'pdi'},
-    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
-    {l:'Viewing Requests',  i:'👁', p:'viewing'},
-    {l:'Invoice',           i:'🧾',p:'invoice'},
-    {l:'Registration',      i:'🪪', p:'registration'},
-    {l:'Duty Roster',       i:'🗓', p:'roster'},
-    {l:'Data Upload',       i:'📤',p:'upload'},
-    {l:'Deal Progress',     i:'💼',p:'deals'},
-    {l:'Demo Cars',         i:'🏎', p:'demo'},
-    {l:'Flags',             i:'🚩',p:'flags'},
-    {l:'Performance',       i:'📈',p:'performance'},
-  ],
-  mg:[
-    {l:'Dashboard',         i:'◉', p:'dashboard'},
-    {l:'Deliveries',        i:'🚗',p:'delivery'},
-    {l:'Demo Cars',         i:'🏎', p:'demo'},
-    {l:'Duty Roster',       i:'🗓', p:'roster'},
-  ],
-  ss:[
-    {l:'Overview',          i:'◉', p:'dashboard'},
-    {l:'All Bookings',      i:'📋',p:'bookings'},
-    {l:'Enquiries',         i:'🔍',p:'enquiries'},
-    {l:'PDI Tracker',       i:'🔧',p:'pdi'},
-    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
-    {l:'Invoice',           i:'🧾',p:'invoice'},
-    {l:'Registration',      i:'🪪', p:'registration'},
-    {l:'Duty Roster',       i:'🗓', p:'roster'},
-    {l:'Deal Progress',     i:'💼',p:'deals'},
-    {l:'Flags',             i:'🚩',p:'flags'},
-    {l:'Demo Cars',         i:'🏎', p:'demo'},
-    {l:'Performance',       i:'📈',p:'performance'},
-  ],
-};
 
 function buildNav(){
   const nav=document.getElementById('sb-nav'); nav.innerHTML='';
@@ -1268,7 +1104,7 @@ function dealBadge(s){
   const m={
     'Finance Pending':'br','Finance Approved':'ba','LPO Received':'ba',
     'LOI Received':'bb','Insured':'bb','Registered':'bp',
-    'Ready for Delivery':'bw','Delivered':'bg',
+    'Ready for Delivery':'bw','Invoiced':'bi','Delivered':'bg',
     'Lost':'bgr'
   };
   const isLost = s==='Lost';
@@ -1341,6 +1177,77 @@ function filterPDI(){
       : `<div class="empty"><div class="empty-ico">🔍</div><p>No PDI records match your search</p></div>`;
   }
 }
+
+// ══════════════════════════════════════
+// NAV
+// ══════════════════════════════════════
+const NAV={
+  se:[
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'My Bookings',       i:'📋',p:'bookings'},
+    {l:'Enquiries',         i:'🔍',p:'enquiries'},
+    {l:'PDI Tracker',       i:'🔧',p:'pdi'},
+    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
+    {l:'Viewing Requests',  i:'👁', p:'viewing'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+  ],
+  sa:[
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'All Bookings',      i:'📋',p:'bookings'},
+    {l:'PDI Management',    i:'🔧',p:'pdi'},
+    {l:'Viewing Requests',  i:'👁', p:'viewing'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Registration',      i:'🪪', p:'registration'},
+    {l:'Data Upload',       i:'📤',p:'upload'},
+    {l:'Deal Progress',     i:'💼',p:'deals'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+  ],
+  pg:[
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'My Deliveries',     i:'🚗',p:'delivery'},
+    {l:'Car Condition',     i:'🔍',p:'condition'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+  ],
+  admin:[
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'All Bookings',      i:'📋',p:'bookings'},
+    {l:'Enquiries',         i:'🔍',p:'enquiries'},
+    {l:'PDI Management',    i:'🔧',p:'pdi'},
+    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
+    {l:'Viewing Requests',  i:'👁', p:'viewing'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Registration',      i:'🪪', p:'registration'},
+    {l:'Duty Roster',       i:'🗓', p:'roster'},
+    {l:'Data Upload',       i:'📤',p:'upload'},
+    {l:'Deal Progress',     i:'💼',p:'deals'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Performance',       i:'📈',p:'performance'},
+  ],
+  mg:[
+    {l:'Dashboard',         i:'◉', p:'dashboard'},
+    {l:'Deliveries',        i:'🚗',p:'delivery'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'Duty Roster',       i:'🗓', p:'roster'},
+  ],
+  ss:[
+    {l:'Overview',          i:'◉', p:'dashboard'},
+    {l:'All Bookings',      i:'📋',p:'bookings'},
+    {l:'Enquiries',         i:'🔍',p:'enquiries'},
+    {l:'PDI Tracker',       i:'🔧',p:'pdi'},
+    {l:'Delivery Schedule', i:'🚗',p:'delivery'},
+    {l:'Invoice',           i:'🧾',p:'invoice'},
+    {l:'Registration',      i:'🪪', p:'registration'},
+    {l:'Duty Roster',       i:'🗓', p:'roster'},
+    {l:'Deal Progress',     i:'💼',p:'deals'},
+    {l:'Flags',             i:'🚩',p:'flags'},
+    {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'Performance',       i:'📈',p:'performance'},
+  ],
+};
 
 // ══════════════════════════════════════
 // PAGES
@@ -2131,7 +2038,7 @@ registration(){
     </div>
   </div>
 
-  <!-- Pending Registration -->
+  
   ${pending.length?`<div class="card" style="margin-bottom:16px;border-color:rgba(245,158,11,.3)">
     <div class="ch"><div class="ct" style="color:var(--amber)">⏳ Awaiting Registration (${pending.length})</div></div>
     <table class="tbl"><thead><tr>
@@ -2148,7 +2055,7 @@ registration(){
     </tbody></table>
   </div>`:''}
 
-  <!-- Registered Cars -->
+  
   <div class="card">
     <div class="ch"><div class="ct">✅ Registered (${myRegs.length})</div></div>
     ${myRegs.length?`<table class="tbl"><thead><tr>
@@ -2861,6 +2768,123 @@ async function doUpdateDemo(id, status){
 }
 
 // ══════════════════════════════════════
+// LOGIN & PIN MANAGEMENT
+// ══════════════════════════════════════
+const PIN_EXPIRY_DAYS = 90;
+
+function onRoleChange(){
+  const role = document.getElementById('role-sel')?.value;
+  const userSel = document.getElementById('user-sel');
+  if(!userSel) return;
+  userSel.innerHTML = '<option value="">— Select name —</option>';
+  if(!role) return;
+  USER_DB.filter(u=>u.role===role).forEach(u=>{
+    const opt = document.createElement('option');
+    opt.value = u.name; opt.textContent = u.name;
+    userSel.appendChild(opt);
+  });
+}
+
+function getPINData(name){
+  try {
+    const raw = localStorage.getItem('agmc_pin_'+name.replace(/\s+/g,'_'));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+function setPINData(name, pin){
+  localStorage.setItem('agmc_pin_'+name.replace(/\s+/g,'_'), JSON.stringify({pin, changed:new Date().toISOString()}));
+}
+function getPINForUser(name, defaultPin){
+  const s = getPINData(name); return s ? s.pin : defaultPin;
+}
+function getPINDaysLeft(name){
+  const s = getPINData(name); if(!s) return PIN_EXPIRY_DAYS;
+  return Math.max(0, PIN_EXPIRY_DAYS - Math.floor((Date.now()-new Date(s.changed))/ 86400000));
+}
+function getPINExpired(name){
+  return getPINData(name) ? getPINDaysLeft(name)===0 : false;
+}
+
+async function doLogin(){
+  const r=document.getElementById('role-sel').value;
+  const u=document.getElementById('user-sel').value;
+  const pin=document.getElementById('pin-in').value.trim();
+  if(!r||!u){toast('Please select your role and name.','warn');return;}
+  if(!pin){toast('Please enter your PIN.','warn');return;}
+  const ud=USER_DB.find(x=>x.name===u&&x.role===r);
+  if(!ud){toast('User not found.','err');return;}
+  if(pin!==getPINForUser(u,ud.pin)){
+    toast('Incorrect PIN. Please try again.','err');
+    const el=document.getElementById('pin-in');
+    el.style.animation='shake 0.4s ease';
+    setTimeout(()=>el.style.animation='',500);
+    el.value=''; el.focus(); return;
+  }
+  if(getPINExpired(u)){
+    toast('Your PIN has expired. Please set a new one.','warn');
+    document.getElementById('pin-in').value='';
+    setTimeout(()=>showForcedPINChange(u,r),300); return;
+  }
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true; btn.textContent='Loading…';
+  curRole=r; curUser=u;
+  sessionStorage.setItem('agmc_role',r);
+  sessionStorage.setItem('agmc_user',u);
+  await loadAll();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').classList.add('on');
+  btn.disabled=false; btn.textContent='Enter →';
+  initApp();
+  const dl=getPINDaysLeft(u);
+  if(dl<=14&&dl>0) setTimeout(()=>toast('⚠️ PIN expires in '+dl+' day'+(dl===1?'':'s')+' — please change it soon.','warn'),1500);
+}
+
+function doLogout(){
+  sessionStorage.removeItem('agmc_role'); sessionStorage.removeItem('agmc_user');
+  curRole=''; curUser='';
+  Object.keys(DB).forEach(k=>DB[k]=[]);
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('role-sel').value='';
+  document.getElementById('user-sel').innerHTML='<option value="">— Select name —</option>';
+  document.getElementById('pin-in').value='';
+}
+
+function showForcedPINChange(userName, userRole){
+  openM('🔑 PIN Expired — Set New PIN',`
+    <div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.2);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--red)">
+      ⚠️ Your PIN has expired after ${PIN_EXPIRY_DAYS} days. You must set a new PIN to continue.
+    </div>
+    <div class="fg"><label>New PIN (4 digits)</label>
+      <input type="password" class="fc" id="fpc-new" maxlength="4" placeholder="Enter new 4-digit PIN" oninput="checkPINStrength('fpc-new','fpc-strength','fpc-match','fpc-confirm')"/>
+      <div id="fpc-strength" class="pin-strength" style="background:var(--border2);width:0%"></div>
+    </div>
+    <div class="fg"><label>Confirm New PIN</label>
+      <input type="password" class="fc" id="fpc-confirm" maxlength="4" placeholder="Repeat new PIN" oninput="checkPINStrength('fpc-new','fpc-strength','fpc-match','fpc-confirm')"/>
+      <div id="fpc-match" style="font-size:10px;color:var(--faint);margin-top:4px"></div>
+    </div>
+  `,`<button class="btn btn-red" onclick="doForcedPINSave('${userName}','${userRole}')">Set New PIN & Continue →</button>`);
+}
+
+async function doForcedPINSave(userName, userRole){
+  const np=document.getElementById('fpc-new')?.value.trim();
+  const cp=document.getElementById('fpc-confirm')?.value.trim();
+  if(!np||np.length!==4||!/^\d{4}$/.test(np)){toast('PIN must be exactly 4 digits','warn');return;}
+  if(np!==cp){toast('PINs do not match','warn');return;}
+  setPINData(userName,np); closeM();
+  toast('New PIN set ✓ Logging you in…','ok');
+  setTimeout(async()=>{
+    curRole=userRole; curUser=userName;
+    sessionStorage.setItem('agmc_role',userRole);
+    sessionStorage.setItem('agmc_user',userName);
+    await loadAll();
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').classList.add('on');
+    initApp();
+  },800);
+}
+
+// ══════════════════════════════════════
 // PIN CHANGE MODAL
 // ══════════════════════════════════════
 function checkPINStrength(newId, strengthId, matchId, confirmId){
@@ -3530,16 +3554,59 @@ function openBkModal(id){
     <div class="fg"><label>PG Assigned</label><div>${b.pg_assigned||'<span style="color:var(--faint)">Not assigned</span>'}</div></div>
     <div class="fg"><label>Notes</label><div style="font-size:12px;color:var(--dim);font-style:italic">${b.notes||'—'}</div></div>
     ${(()=>{const del=DB.deliveries.find(d=>d.booking_id===b.id);return del?`<hr class="dv"/><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:var(--r);padding:11px 14px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">🚗 Delivery Scheduled</div><div style="font-size:12px;color:var(--dim)"><b>Date:</b> ${del.delivery_date} &nbsp;|&nbsp; <b>Time:</b> ${del.delivery_time} &nbsp;|&nbsp; <b>PG:</b> ${del.pg_assigned||'—'}</div>${del.special_instructions?`<div style="font-size:11px;color:var(--faint);margin-top:4px">${del.special_instructions}</div>`:''}</div>`:''})()}
-  `,`<button class="btn btn-ghost" onclick="closeM()">Close</button>
-    ${curRole==='se'?`<button class="btn btn-ghost" style="color:var(--blue);border-color:rgba(59,130,246,.4)" onclick="closeM();openDailyUpdateModal('${b.id}')">💬 Daily Update</button>`:''}
-    ${canPDI()?`<button class="btn btn-blue" onclick="closeM();openPDIModal('${b.id}')">Push PDI</button>`:''}
-    ${curRole==='se'?`<button class="btn btn-green" onclick="closeM();openScheduleDeliveryModal('${b.id}')">🚗 Schedule Delivery</button>`:''}
-    ${(curRole==='se'||curRole==='sa'||curRole==='admin')&&b.deal!=='Invoiced'&&b.deal!=='Delivered'&&b.deal!=='Lost'?`<button class="btn btn-ghost" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="closeM();openInvoiceModal('${b.id}')">🧾 Invoice</button>`:''}
-    ${canDeal()?`<button class="btn btn-red" onclick="closeM();doAdvanceDeal('${b.id}')">Advance Deal →</button>`:''}
-    ${(curRole==='se'||curRole==='sa')&&b.deal!=='Delivered'&&b.deal!=='Lost'?`<button class="btn btn-ghost" style="color:var(--red);border-color:rgba(226,0,26,.3)" onclick="closeM();openMarkLostModal('${b.id}')">✕ Mark as Lost</button>`:''}
-    ${b.deal==='Lost'&&(curRole==='sa'||curRole==='admin')?`<button class="btn btn-red" onclick="closeM();doDeleteBooking('${b.id}','${b.customer.replace(/'/g,'')}')">🗑 Delete</button>`:''}
+  `,`
+  <div class="bm-actions">
+
+    <!-- Row 1: Primary action buttons — icon + label, equal width -->
+    <div class="bma-row">
+      ${curRole==='se'?`
+        <button class="bma-btn bma-blue" onclick="closeM();openDailyUpdateModal('${b.id}')">
+          <span class="bma-ico">💬</span><span class="bma-lbl">Daily Update</span>
+        </button>`:''}
+      ${canPDI()?`
+        <button class="bma-btn bma-purple" onclick="closeM();openPDIModal('${b.id}')">
+          <span class="bma-ico">🔧</span><span class="bma-lbl">Push PDI</span>
+        </button>`:''}
+      ${curRole==='se'?`
+        <button class="bma-btn bma-green" onclick="closeM();openScheduleDeliveryModal('${b.id}')">
+          <span class="bma-ico">🚗</span><span class="bma-lbl">Delivery</span>
+        </button>`:''}
+      ${(curRole==='se'||curRole==='sa'||curRole==='admin')&&b.deal!=='Invoiced'&&b.deal!=='Delivered'&&b.deal!=='Lost'?`
+        <button class="bma-btn bma-amber" onclick="closeM();openInvoiceModal('${b.id}')">
+          <span class="bma-ico">🧾</span><span class="bma-lbl">Invoice</span>
+        </button>`:b.deal==='Invoiced'?`
+        <div class="bma-badge-done">
+          <span class="bma-ico">✅</span><span class="bma-lbl" style="color:var(--green)">Invoiced</span>
+        </div>`:''}
+    </div>
+
+    <!-- Row 2: Advance Deal (full width, subtle) -->
+    ${canDeal()&&b.deal!=='Delivered'&&b.deal!=='Lost'?`
+      <button class="bma-advance" onclick="closeM();doAdvanceDeal('${b.id}')">
+        <span style="font-size:13px">💼</span>
+        <span>Advance Deal</span>
+        <span style="opacity:.6;font-size:11px">→ ${nextStep(b.deal)}</span>
+      </button>`:''}
+
+    <!-- Row 3: Footer — close left, destructive right -->
+    <div class="bma-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeM()">← Close</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${(curRole==='se'||curRole==='sa')&&b.deal!=='Delivered'&&b.deal!=='Lost'?`
+          <button class="bma-btn bma-red bma-sm" onclick="closeM();openMarkLostModal('${b.id}')">
+            <span class="bma-ico">✕</span><span class="bma-lbl">Mark as Lost</span>
+          </button>`:''}
+        ${b.deal==='Lost'&&(curRole==='sa'||curRole==='admin')?`
+          <button class="bma-btn bma-red bma-sm" onclick="closeM();doDeleteBooking('${b.id}','${b.customer.replace(/'/g,'')}')">
+            <span class="bma-ico">🗑</span><span class="bma-lbl">Delete</span>
+          </button>`:''}
+      </div>
+    </div>
+  </div>
   `);
 }
+
+
 
 function openPDIModal(id){
   const b=DB.bookings.find(x=>x.id===id); if(!b) return;
@@ -3873,9 +3940,9 @@ function filterBks(){
     : DB.bookings;
   const bks = base.filter(b=>{
     const ms=!s||(b.customer||'').toLowerCase().includes(s)||(b.model||'').toLowerCase().includes(s)||(b.id||'').toLowerCase().includes(s);
-    const md = d===''   ? b.deal!=='Lost'      // default: hide Lost
-             : d==='ALL'? true                  // show everything
-             : b.deal===d;                       // specific stage
+    const md = d===''   ? (b.deal!=='Lost')      // default: hide Lost only
+             : d==='ALL'? true                   // show everything
+             : b.deal===d;                        // specific stage
     const mse=!se||b.se===se;
     const mp=p===''||p===undefined||b.pdi===parseInt(p);
     return ms&&md&&mse&&mp;
