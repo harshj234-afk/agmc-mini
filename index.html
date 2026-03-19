@@ -1795,14 +1795,195 @@ dashboard(){
   }
 
   // ╔══════════════════════════════════════════════════════╗
-  // ║  ADMIN / SS DASHBOARD                               ║
+  // ║  SS DASHBOARD (full overview)                       ║
   // ╚══════════════════════════════════════════════════════╝
-  const bks=myBks();
-  const openEnq=myEnqs().filter(e=>e.status==='Open').length;
-  const pdiAct=bks.filter(b=>b.pdi>0&&b.pdi<6).length;
-  const readyD=bks.filter(b=>b.deal==='Ready for Delivery').length;
-  const openFlags=DB.flags.filter(f=>f.status==='Open').length;
-  const todayDel=DB.deliveries.filter(d=>d.delivery_date===today);
+  const bks       = DB.bookings;
+  const allEnq    = DB.enquiries||[];
+  const allDels   = DB.deliveries||[];
+  const allInv    = DB.invoices||[];
+  const allRegs   = DB.registrations||[];
+
+  // KPIs
+  const openEnq     = allEnq.filter(e=>e.status==='Open'||e.status==='Follow-Up').length;
+  const totalBk     = bks.filter(b=>b.deal!=='Lost').length;
+  const totalInv    = allInv.length;
+  const totalReg    = allRegs.length;
+  const totalDel    = allDels.filter(d=>d.status==='Delivered').length;
+  const testDrives  = allEnq.filter(e=>e.interest==='Test Drive').length;
+  const pdiAct      = bks.filter(b=>b.pdi>0&&b.pdi<6).length;
+  const readyD      = bks.filter(b=>b.deal==='Ready for Delivery').length;
+  const openFlags   = (DB.flags||[]).filter(f=>f.status==='Open').length;
+  const todayDel    = allDels.filter(d=>d.delivery_date===today);
+
+  // Deal pipeline counts
+  const pipelineStages = DEAL_STAGES.filter(s=>s!=='Lost');
+  const pipelineCounts = pipelineStages.map(s=>({stage:s, count:bks.filter(b=>b.deal===s).length}));
+
+  // Booking ratio per SE
+  const seList = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
+  const seRatios = seList.map(se=>({
+    se: se.split(' ')[0],
+    bookings: bks.filter(b=>b.se===se&&b.deal!=='Lost').length,
+    delivered: bks.filter(b=>b.se===se&&b.deal==='Delivered').length,
+    enquiries: allEnq.filter(e=>e.se===se).length,
+    testDrives: allEnq.filter(e=>e.se===se&&e.interest==='Test Drive').length,
+  }));
+  const maxBk = Math.max(...seRatios.map(r=>r.bookings), 1);
+
+  // Source breakdown
+  const sources = {};
+  allEnq.forEach(e=>{ const s=e.source||e.notes?.match(/Source: ([^|]+)/)?.[1]?.trim()||'Other'; sources[s]=(sources[s]||0)+1; });
+  const topSources = Object.entries(sources).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxSrc = Math.max(...topSources.map(s=>s[1]),1);
+
+  // My roster
+  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayIdx2 = new Date().getDay();
+  const myR = ROSTER_DATA.find(r=>r.name===curUser);
+  const sc = s=>s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
+
+  if(curRole==='ss') return `
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:2px;text-transform:uppercase">Sales Supervisor — Overview</div>
+      <div style="font-size:24px;font-weight:800;color:var(--white);margin-top:2px">${curUser}</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:2px">${todayStr}</div>
+    </div>
+    <button class="btn btn-red" onclick="goTo('performance')">📈 Performance →</button>
+  </div>
+
+  ${todayDel.length?`<div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.25);border-radius:var(--rl);padding:13px 17px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDel.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDel.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
+
+  <!-- Row 1: Main KPIs -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">
+    ${[
+      {l:'Open Enquiries', v:openEnq,  ico:'🔍', c:'var(--blue)',   action:"goTo('enquiries')"},
+      {l:'Active Bookings',v:totalBk,  ico:'📋', c:'var(--red)',    action:"goTo('bookings')"},
+      {l:'Invoiced',       v:totalInv, ico:'🧾', c:'var(--amber)',  action:"goTo('invoice')"},
+      {l:'Registered',     v:totalReg, ico:'🪪', c:'#a855f7',       action:"goTo('registration')"},
+      {l:'Delivered',      v:totalDel, ico:'✅', c:'var(--green)',  action:"goTo('delivery')"},
+    ].map(k=>`<div class="card" style="text-align:center;padding:16px 8px;cursor:pointer;transition:filter .15s" onclick="${k.action}" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
+      <div style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">${k.ico} ${k.l}</div>
+      <div style="font-size:30px;font-weight:800;color:${k.c};line-height:1">${k.v}</div>
+    </div>`).join('')}
+  </div>
+
+  <!-- Row 2: Secondary KPIs -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+    ${[
+      {l:'Test Drives',    v:testDrives, ico:'🏎', c:'#22d3ee'},
+      {l:'PDI In Progress',v:pdiAct,    ico:'🔧', c:'var(--amber)'},
+      {l:'Ready to Deliver',v:readyD,   ico:'🚗', c:'var(--green)'},
+      {l:'Open Flags',     v:openFlags, ico:'🚩', c:'var(--red)'},
+    ].map(k=>`<div class="card" style="display:flex;align-items:center;gap:12px;padding:14px 16px">
+      <div style="font-size:22px">${k.ico}</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;color:${k.c}">${k.v}</div>
+        <div style="font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;margin-top:1px">${k.l}</div>
+      </div>
+    </div>`).join('')}
+  </div>
+
+  <!-- Row 3: Deal Pipeline + SE Booking Ratio -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+
+    <!-- Deal Pipeline -->
+    <div class="card">
+      <div class="ch"><div class="ct">💼 Deal Pipeline</div></div>
+      <div style="padding:4px 0">
+        ${pipelineCounts.filter(p=>p.count>0).map(p=>{
+          const pct=Math.round(p.count/Math.max(totalBk,1)*100);
+          const col=p.stage==='Delivered'?'var(--green)':p.stage==='Invoiced'?'var(--amber)':p.stage==='Registered'?'#a855f7':p.stage==='Ready for Delivery'?'#22d3ee':'var(--blue)';
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span style="color:var(--dim)">${p.stage}</span>
+              <span style="color:var(--faint);font-family:'Space Mono',monospace">${p.count} <span style="font-size:9px">(${pct}%)</span></span>
+            </div>
+            <div class="pb"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- SE Booking Ratio -->
+    <div class="card">
+      <div class="ch"><div class="ct">📊 Booking Ratio by SE</div></div>
+      <table style="width:100%;font-size:11px;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">SE</th>
+          <th style="text-align:center;padding:4px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Bookings</th>
+          <th style="text-align:center;padding:4px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">TD</th>
+          <th style="text-align:left;padding:4px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Bar</th>
+        </tr></thead>
+        <tbody>
+          ${seRatios.map(r=>`<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:7px 8px;font-weight:600;color:var(--white)">${r.se}</td>
+            <td style="text-align:center;padding:7px 6px;color:var(--red);font-weight:700">${r.bookings}</td>
+            <td style="text-align:center;padding:7px 6px;color:#22d3ee;font-size:10px">${r.testDrives}</td>
+            <td style="padding:7px 8px">
+              <div style="background:var(--surface2);border-radius:3px;height:6px;width:100%">
+                <div style="background:var(--red);border-radius:3px;height:6px;width:${Math.round(r.bookings/maxBk*100)}%;transition:width .3s"></div>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Row 4: Enquiry Source + Today Flags -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+
+    <!-- Showroom Performance / Source Breakdown -->
+    <div class="card">
+      <div class="ch"><div class="ct">📈 Enquiry Sources</div><span style="font-size:10px;color:var(--faint)">${allEnq.length} total</span></div>
+      ${topSources.map(([src,cnt])=>{
+        const pct=Math.round(cnt/maxSrc*100);
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+            <span style="color:var(--dim)">${src}</span>
+            <span style="color:var(--faint);font-family:'Space Mono',monospace">${cnt}</span>
+          </div>
+          <div class="pb"><div class="pf pf-red" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Test Drives + Open Enquiries recent -->
+    <div class="card">
+      <div class="ch"><div class="ct">🔍 Recent Open Enquiries</div><button class="btn btn-ghost btn-xs" onclick="goTo('enquiries')">All →</button></div>
+      <table class="tbl" style="font-size:11px">
+        <thead><tr><th>Customer</th><th>Model</th><th>SE</th><th>Lead</th></tr></thead>
+        <tbody>
+          ${allEnq.filter(e=>e.status==='Open'||e.status==='Follow-Up').slice(0,6).map(e=>`<tr>
+            <td class="tb" style="font-size:10px">${(e.customer||'—').split(' ').slice(0,2).join(' ')}</td>
+            <td style="font-size:10px">${(e.model||'—').split(' ').slice(0,3).join(' ')}</td>
+            <td style="font-size:10px">${(e.se||'').split(' ')[0]}</td>
+            <td><span class="badge ${e.interest==='Test Drive'?'bg':e.interest==='Purchase'?'br':'ba'}" style="font-size:8px">${e.interest||'—'}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Row 5: My Roster -->
+  <div class="card">
+    <div class="ch">
+      <div class="ct">🗓 My Schedule</div>
+      ${myR?`<span style="font-size:14px;font-weight:800;color:${sc(myR.days[todayIdx2])}">${myR.days[todayIdx2]} <span style="font-size:10px;color:var(--faint);font-weight:400">today</span></span>`:''}
+    </div>
+    ${myR?`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;padding:4px 0">
+      ${DAYS.map((d,i)=>{const st=myR.days[i];const isT=i===todayIdx2;
+        return '<div style="background:var(--surface2);border-radius:8px;padding:8px 4px'+(isT?';outline:2px solid var(--red)':'')+'"><div style="font-size:9px;color:var(--faint);text-transform:uppercase;margin-bottom:3px">'+d+'</div><div style="font-size:13px;font-weight:800;color:'+sc(st)+'">'+st+'</div></div>';
+      }).join('')}
+    </div>`:`<div style="color:var(--faint);font-size:12px;padding:8px">Not in roster</div>`}
+  </div>
+  `;
+
+  // ── Admin dashboard (unchanged fallback) ──
+  const openFlags2 = (DB.flags||[]).filter(f=>f.status==='Open').length;
+
   return `
   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
     <div>
