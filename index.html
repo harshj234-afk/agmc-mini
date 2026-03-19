@@ -2824,7 +2824,7 @@ async function doImport(type){
           return d.trim()||null;
         };
         const id = isAGMC
-          ? ('BK-'+(r['VSB No']||r['VSB']||r['Enq Number']||idx+1).toString().trim())
+          ? ('BK-'+(r['Enq Number']||r['VSB No']||r['VSB']||idx+1).toString().trim())
           : ((r.id||genId('BK')).toString().trim());
         // Helper: empty string -> null for optional fields
         const tx = v => (v||'').trim()||null;
