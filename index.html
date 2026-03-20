@@ -1931,8 +1931,7 @@ dashboard(){
     const doneDels = myDels.filter(d=>d.status==='Delivered').length;
     const myCars = DB.bookings.filter(b=>b.pg_assigned===curUser&&b.pdi>=5&&b.deal!=='Delivered');
     return `
-    ${pgTargetWidget(curUser)}
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--dim);letter-spacing:2px;text-transform:uppercase">Product Genius</div>
         <div style="font-size:24px;font-weight:800;color:var(--white);margin-top:2px">${curUser}</div>
@@ -1940,6 +1939,7 @@ dashboard(){
       </div>
       <button class="btn btn-red btn-sm" onclick="openRaiseFlagModal()">🚩 Raise Flag</button>
     </div>
+    ${pgTargetWidget(curUser)}
 
     <div class="sg s3">
       <div class="sc red"><div class="slbl">Today's Deliveries</div><div class="sval" style="color:var(--red)">${todayDels.length}</div><div class="ssub">${todayDels.length?todayDels.map(d=>d.customer.split(' ')[0]).join(', '):'None today'}</div><div class="sico">🚗</div></div>
