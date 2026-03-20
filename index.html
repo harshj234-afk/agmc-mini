@@ -1773,8 +1773,7 @@ dashboard(){
     const delivered = myBk.filter(b=>b.deal==='Delivered').length;
     const todayDels = myDel.filter(d=>d.delivery_date===today);
     return `
-    ${seTargetWidget(curUser)}
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--dim);letter-spacing:2px;text-transform:uppercase">Good morning</div>
         <div style="font-size:24px;font-weight:800;color:var(--white);margin-top:2px">${curUser}</div>
@@ -1786,8 +1785,7 @@ dashboard(){
       </div>
     </div>
 
-    ${targetBanner('se')}
-
+    ${seTargetWidget(curUser)}
     <div class="sg">
       <div class="sc red"><div class="slbl">Active Pipeline</div><div class="sval" style="color:var(--red)">${pipeline}</div><div class="ssub">Bookings in progress</div><div class="sico">📋</div></div>
       <div class="sc amber"><div class="slbl">Finance Pending</div><div class="sval" style="color:var(--amber)">${pendingFinance}</div><div class="ssub">Awaiting approval</div><div class="sico">⏳</div></div>
@@ -1866,8 +1864,6 @@ dashboard(){
       </div>
       <button class="btn btn-red" onclick="goTo('upload')">📤 Morning Upload →</button>
     </div>
-
-    ${targetBanner('sa')}
 
       <div class="sg">
       <div class="sc red"><div class="slbl">Total Bookings</div><div class="sval" style="color:var(--red)">${allBk.length}</div><div class="ssub">All team pipeline</div><div class="sico">📋</div></div>
@@ -2194,8 +2190,6 @@ dashboard(){
 
   ${todayDel.length?`<div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.25);border-radius:var(--rl);padding:13px 17px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDel.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDel.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
 
-  ${targetBanner('ss')}
-
   <!-- Row 1: Main KPIs -->
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">
     ${[
@@ -2250,20 +2244,27 @@ dashboard(){
       </div>
     </div>
 
-    <!-- SE Bookings panel -->
+    <!-- SE Invoice Target -->
     <div class="card">
-      <div class="ch"><div class="ct">📋 Bookings by SE</div></div>
-      <table style="width:100%;font-size:11px;border-collapse:collapse">
-        <thead><tr>
-          <th style="text-align:left;padding:5px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Sales Executive</th>
-          <th style="text-align:center;padding:5px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Bookings</th>
-          <th style="text-align:center;padding:5px 6px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border)">Delivered</th>
-          <th style="text-align:left;padding:5px 8px;font-size:9px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--border);width:35%">Share</th>
-        </tr></thead>
-        <tbody>
-          ${seRatios.map(r=>'<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 8px;font-weight:600;color:var(--white)">'+r.se+'</td><td style="text-align:center;padding:8px 6px;color:var(--red);font-weight:700">'+r.bookings+'</td><td style="text-align:center;padding:8px 6px;color:var(--green);font-size:10px">'+r.delivered+'</td><td style="padding:8px 8px"><div style="background:var(--surface2);border-radius:3px;height:6px"><div style="background:var(--red);border-radius:3px;height:6px;width:'+Math.round(r.bookings/maxBk*100)+'%"></div></div></td></tr>').join('')}
-        </tbody>
-      </table>
+      <div class="ch"><div class="ct">🎯 Invoice Target by SE</div><span style="font-size:10px;color:var(--faint)">${new Date().toLocaleString('en-AE',{month:'long'})}</span></div>
+      ${(()=>{
+        const t2=getActiveTarget();
+        const ym2=new Date().toISOString().slice(0,7);
+        const tgt=t2?.invoices?Math.ceil(t2.invoices/6):0;
+        if(!tgt) return '<div style="padding:16px;text-align:center;font-size:12px;color:var(--faint)">No target set — use ✏️ Edit Target</div>';
+        return seList.map(se=>{
+          const a=(DB.invoices||[]).filter(i=>i.se===se&&(i.invoice_date||'').startsWith(ym2)).length;
+          const p=Math.min(100,Math.round(a/tgt*100));
+          const c=p>=100?'var(--green)':p>=60?'var(--amber)':'var(--red)';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'
+            +'<div style="font-size:12px;font-weight:600;color:var(--white);min-width:72px">'+se.split(' ')[0]+'</div>'
+            +'<div style="flex:1"><div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">'
+            +'<div style="background:'+c+';height:6px;width:'+p+'%;border-radius:3px;transition:width .4s"></div></div></div>'
+            +'<div style="font-size:11px;font-weight:700;color:'+c+';width:42px;text-align:right">'+a+'/'+tgt+'</div>'
+            +'<div style="font-size:10px;color:var(--faint);width:34px;text-align:right">'+p+'%</div>'
+            +'</div>';
+        }).join('');
+      })()}
     </div>
   </div>
 
@@ -2383,8 +2384,6 @@ dashboard(){
   </div>
 
   ${todayDelA.length?`<div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.25);border-radius:var(--rl);padding:13px 17px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDelA.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDelA.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
-
-  ${targetBanner('admin')}
 
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px">
     ${[{l:'Open Enquiries',v:openEnqA,ico:'🔍',c:'var(--blue)',a:"goTo('enquiries')"},{l:'Active Bookings',v:totalBkA,ico:'📋',c:'var(--red)',a:"goTo('bookings')"},{l:'Invoiced',v:totalInvA,ico:'🧾',c:'var(--amber)',a:"goTo('invoice')"},{l:'Registered',v:totalRegA,ico:'🪪',c:'#a855f7',a:"goTo('registration')"},{l:'Delivered',v:totalDelA,ico:'✅',c:'var(--green)',a:"goTo('delivery')"}].map(k=>`<div class="card" style="text-align:center;padding:14px 6px;cursor:pointer" onclick="${k.a}"><div style="font-size:8px;color:var(--faint);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">${k.ico} ${k.l}</div><div style="font-size:28px;font-weight:800;color:${k.c};line-height:1">${k.v}</div></div>`).join('')}
