@@ -1374,31 +1374,26 @@ function targetBanner(role){
   const year = now.getFullYear();
 
   if(role==='se'){
-    const bkTarget  = getSeTarget(curUser)   || 0;
     const invTarget = getSeInvoiceTarget(curUser) || 0;
-    const bkActual  = getCurrentMonthBookings(curUser);
     const invActual = getCurrentMonthInvoices(curUser);
-    if(!t && bkTarget===0) return `
+    if(!t && invTarget===0) return `
       <div style="background:rgba(226,0,26,.04);border:1px solid rgba(226,0,26,.15);border-radius:var(--rl);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div style="font-size:12px;color:var(--faint)">🎯 No target set for ${monthName} — Sales Supervisor can set targets from their dashboard</div>
       </div>`;
     return `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-          <div style="font-size:11px;font-weight:700;color:var(--white);letter-spacing:.5px">🎯 MY TARGET — ${monthName.toUpperCase()} ${year}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--white);letter-spacing:.5px">🎯 MY INVOICE TARGET — ${monthName.toUpperCase()} ${year}</div>
           <div style="font-size:10px;color:var(--faint)">Individual monthly target</div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          ${donutChart(bkActual, bkTarget, 'var(--red)', 'Bookings')}
+        <div style="display:grid;grid-template-columns:1fr;gap:16px;max-width:320px">
           ${donutChart(invActual, invTarget, 'var(--amber)', 'Invoices')}
         </div>
       </div>`;
   }
 
   // SS / SA / Admin — showroom totals
-  const showBkTarget  = t?.showroom_bookings  || 0;
   const showInvTarget = t?.showroom_invoices   || 0;
-  const totalBkActual = SE_LIST.reduce((s,se)=>s+getCurrentMonthBookings(se),0);
   const totalInvActual= SE_LIST.reduce((s,se)=>s+getCurrentMonthInvoices(se),0);
   const canEdit = ['ss','sa','admin'].includes(role);
 
@@ -1413,8 +1408,7 @@ function targetBanner(role){
           ${t?'✏️ Edit Target':'+ Set Target'}
         </button>`:''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
-        ${donutChart(totalBkActual, showBkTarget, 'var(--red)', 'Showroom Bookings')}
+      <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:14px;max-width:320px">
         ${donutChart(totalInvActual, showInvTarget, 'var(--amber)', 'Showroom Invoices')}
       </div>
       <!-- Per-SE breakdown -->
@@ -1422,26 +1416,12 @@ function targetBanner(role){
         <div style="font-size:9px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Individual SE Progress</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
           ${SE_LIST.map(se=>{
-            const bkA  = getCurrentMonthBookings(se);
-            const bkT  = getSeTarget(se) || 0;
             const invA = getCurrentMonthInvoices(se);
             const invT = getSeInvoiceTarget(se) || 0;
-            const bkPct  = bkT  ? Math.min(Math.round(bkA/bkT*100),100)  : 0;
             const invPct = invT ? Math.min(Math.round(invA/invT*100),100) : 0;
-            const bkCol  = bkPct>=100?'var(--green)':bkPct>=60?'var(--amber)':'var(--red)';
             const invCol = invPct>=100?'var(--green)':invPct>=60?'var(--amber)':'var(--blue)';
-            return '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px">'
-              +'<div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">'+se.split(' ')[0]+'</div>'
-              +'<div style="margin-bottom:5px">'
-                +'<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px"><span style="color:var(--faint)">Bookings</span><span style="color:'+bkCol+';font-weight:700">'+bkA+'/'+(bkT||'—')+'</span></div>'
-                +'<div style="background:var(--surface);border-radius:2px;height:4px"><div style="background:'+bkCol+';border-radius:2px;height:4px;width:'+bkPct+'%;transition:width .4s"></div></div>'
-              +'</div>'
-              +'<div>'
-                +'<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px"><span style="color:var(--faint)">Invoices</span><span style="color:'+invCol+';font-weight:700">'+invA+'/'+(invT||'—')+'</span></div>'
-                +'<div style="background:var(--surface);border-radius:2px;height:4px"><div style="background:'+invCol+';border-radius:2px;height:4px;width:'+invPct+'%;transition:width .4s"></div></div>'
-              +'</div>'
-              +'</div>';
-          }).join('')}
+            return '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px">'              +'<div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">'+se.split(' ')[0]+'</div>'              +'<div>'                +'<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px"><span style="color:var(--faint)">Invoices</span><span style="color:'+invCol+';font-weight:700">'+invA+'/'+(invT||'—')+'</span></div>'                +'<div style="background:var(--surface);border-radius:2px;height:4px"><div style="background:'+invCol+';border-radius:2px;height:4px;width:'+invPct+'%;transition:width .4s"></div></div>'              +'</div>'              +'</div>';
+                    }).join('')}
         </div>
       </div>
     </div>`;
@@ -1451,10 +1431,7 @@ function targetBanner(role){
 // TARGETS
 // ══════════════════════════════════════
 function getActiveTarget(){
-  // Get current month's target
-  const now = new Date();
-  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  return DB.targets.find(t=>t.month===ym) || null;
+  return getCurrentMonthTarget();
 }
 
 function getSETarget(seName){
@@ -1622,22 +1599,17 @@ function showroomTargetWidget(editable){
   const now = new Date();
   const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-
-  // Showroom actuals this month
-  const allBk  = DB.bookings.filter(b=>b.date&&b.date.startsWith(ym)).length;
-  const allDel = DB.deliveries.filter(d=>d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym)).length;
-  const allTD  = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym)).length;
-
-  const bkT  = t?.bookings||0;
-  const delT = t?.deliveries||0;
-  const tdT  = t?.test_drives||0;
-
-  const bkPct  = bkT  ? Math.min(100,Math.round(allBk/bkT*100))   : 0;
-  const delPct = delT ? Math.min(100,Math.round(allDel/delT*100))  : 0;
-  const tdPct  = tdT  ? Math.min(100,Math.round(allTD/tdT*100))    : 0;
-  const overallPct = bkT||delT||tdT ? Math.round((bkPct+delPct+tdPct)/3) : 0;
+  const allDel  = DB.deliveries.filter(d=>d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym)).length;
+  const allTD   = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym)).length;
+  const allInvM = (DB.invoices||[]).filter(i=>(i.invoice_date||'').startsWith(ym)).length;
+  const invT    = t?.invoices||0;
+  const pgDelT  = t?.pg_deliveries||0;
+  const pgTdT   = t?.pg_test_drives||0;
+  const invPct  = invT   ? Math.min(100,Math.round(allInvM/invT*100))  : 0;
+  const delPct  = pgDelT ? Math.min(100,Math.round(allDel/pgDelT*100)) : 0;
+  const tdPct   = pgTdT  ? Math.min(100,Math.round(allTD/pgTdT*100))   : 0;
+  const overallPct   = invT||pgDelT||pgTdT ? Math.round((invPct+delPct+tdPct)/3) : 0;
   const overallColor = overallPct>=100?'var(--green)':overallPct>=60?'var(--amber)':'var(--red)';
-
   return `<div class="card" style="margin-bottom:14px;border-color:${overallPct>=100?'rgba(34,197,94,.3)':overallPct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
     <div class="ch" style="margin-bottom:10px">
       <div>
@@ -1647,23 +1619,24 @@ function showroomTargetWidget(editable){
       <div style="display:flex;align-items:center;gap:8px">
         <div style="text-align:right">
           <div style="font-size:22px;font-weight:800;color:${overallColor}">${overallPct}%</div>
-          <div style="font-size:9px;color:var(--faint)">Showroom</div>
+          <div style="font-size:9px;color:var(--faint)">Overall</div>
         </div>
         ${editable?`<button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:rgba(245,158,11,.3)" onclick="openSetTargetModal()">✏️ ${t?'Edit':'Set'} Target</button>`:''}
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
       ${[
-        {l:'📋 Bookings',    a:allBk,  tgt:bkT,  pct:bkPct},
-        {l:'🚗 Deliveries',  a:allDel, tgt:delT, pct:delPct},
-        {l:'🏎 Test Drives', a:allTD,  tgt:tdT,  pct:tdPct},
-      ].map(({l,a,tgt,pct})=>{
+        {l:'🧾 Invoices',    a:allInvM,tgt:invT,  pct:invPct, sub:'SE ÷6'},
+        {l:'🚗 Deliveries',  a:allDel, tgt:pgDelT,pct:delPct, sub:'PG ÷2'},
+        {l:'🏎 Test Drives', a:allTD,  tgt:pgTdT, pct:tdPct,  sub:'PG ÷2'},
+      ].map(({l,a,tgt,pct,sub})=>{
         const col=pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
         return `<div style="background:var(--surface2);border-radius:8px;padding:12px 10px;text-align:center">
-          <div style="font-size:9px;color:var(--faint);margin-bottom:6px">${l}</div>
+          <div style="font-size:9px;color:var(--faint);margin-bottom:1px">${l}</div>
+          <div style="font-size:8px;color:var(--faint);opacity:.55;margin-bottom:5px">${sub}</div>
           <div style="font-size:20px;font-weight:800;color:${tgt?col:'var(--dim)'}">${a}</div>
           <div style="font-size:10px;color:var(--faint);margin:2px 0">/ ${tgt||'—'} target</div>
-          <div style="background:var(--surface);border-radius:3px;height:4px;margin-top:6px;overflow:hidden">
+          <div style="background:var(--surface);border-radius:3px;height:4px;margin-top:5px;overflow:hidden">
             <div style="background:${col};height:4px;width:${pct}%;border-radius:3px"></div>
           </div>
           <div style="font-size:10px;font-weight:700;color:${tgt?col:'var(--faint)'};margin-top:3px">${tgt?pct+'%':'—'}</div>
@@ -1672,7 +1645,6 @@ function showroomTargetWidget(editable){
     </div>
   </div>`;
 }
-
 // ══════════════════════════════════════
 // SHARED HELPERS
 // ══════════════════════════════════════
@@ -3474,19 +3446,11 @@ function openTargetModal(){
       Showroom totals will be <b style="color:var(--white)">equally divided</b> across ${perSe} SEs.
       You can override individual SE targets below.
     </div>
-    <div class="fr c2">
-      <div class="fg">
-        <label>Showroom Bookings Target</label>
-        <input class="fc" type="number" id="tgt-bk" min="0" max="200"
-          value="${t?.showroom_bookings||''}" placeholder="e.g. 30"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:3px">Each SE gets ~${t?Math.round((t.showroom_bookings||0)/perSe):0} bookings</div>
-      </div>
-      <div class="fg">
-        <label>Showroom Invoices Target</label>
-        <input class="fc" type="number" id="tgt-inv" min="0" max="200"
-          value="${t?.showroom_invoices||''}" placeholder="e.g. 25"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:3px">Each SE gets ~${t?Math.round((t.showroom_invoices||0)/perSe):0} invoices</div>
-      </div>
+    <div class="fg">
+      <label>🧾 Showroom Invoice Target <span style="font-size:10px;color:var(--faint)">(divides equally across ${perSe} SEs)</span></label>
+      <input class="fc" type="number" id="tgt-inv" min="0" max="200"
+        value="${t?.showroom_invoices||''}" placeholder="e.g. 24"/>
+      <div style="font-size:10px;color:var(--faint);margin-top:3px">Each SE gets ~${t?Math.round((t.showroom_invoices||0)/perSe):0} invoices</div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
       <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
@@ -3512,23 +3476,19 @@ function openTargetModal(){
 }
 
 async function doSaveTarget(month, year){
-  const bk  = parseInt(document.getElementById('tgt-bk')?.value)||0;
   const inv = parseInt(document.getElementById('tgt-inv')?.value)||0;
-  if(!bk && !inv){ toast('Please enter at least one target','warn'); return; }
+  if(!inv){ toast('Please enter invoice target','warn'); return; }
 
   // Collect SE overrides
   const seOverrides={}, seInvOverrides={};
   SE_LIST.forEach(se=>{
     const key = se.replace(/ /g,'_');
-    const bkV = document.getElementById('tgt-se-bk-'+key)?.value;
     const inV = document.getElementById('tgt-se-inv-'+key)?.value;
-    if(bkV !== '' && bkV !== undefined && !isNaN(parseInt(bkV))) seOverrides[se]    = parseInt(bkV);
     if(inV !== '' && inV !== undefined && !isNaN(parseInt(inV))) seInvOverrides[se] = parseInt(inV);
   });
 
   const record = {
     month, year,
-    showroom_bookings:  bk,
     showroom_invoices:  inv,
     se_overrides:       JSON.stringify(seOverrides),
     se_invoice_overrides: JSON.stringify(seInvOverrides),
@@ -3556,66 +3516,7 @@ async function doSaveTarget(month, year){
 // TARGET MANAGEMENT
 // ══════════════════════════════════════
 function openSetTargetModal(){
-  const t = getActiveTarget();
-  const now = new Date();
-  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  const seCount = 6; // Number of SEs
-
-  // (invoices, pg_deliveries, pg_test_drives, driver_deliveries, driver_test_drives)
-
-  openM(`🎯 Set Monthly Target — ${monthLabel}`,`
-    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:11px 14px;margin-bottom:14px;font-size:12px;color:var(--amber)">
-      📋 Set the showroom total target. It will be divided equally among all ${seCount} Sales Executives.
-    </div>
-    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🧾 Sales Executives — Invoice Target (÷6)</div>
-    <div class="fg">
-      <label>Showroom Invoice Target</label>
-      <input class="fc" id="tgt-inv" type="number" min="0" value="${t?.invoices||0}" placeholder="e.g. 24"/>
-      <div style="font-size:10px;color:var(--faint);margin-top:4px">Per SE: ~${t?.invoices?Math.ceil(t.invoices/seCount):'—'} invoices each</div>
-    </div>
-    <hr style="border-color:var(--border);margin:14px 0"/>
-    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🔧 Product Genius (÷2)</div>
-    <div class="fr c2">
-      <div class="fg">
-        <label>🚗 PG Deliveries</label>
-        <input class="fc" id="tgt-pg-del" type="number" min="0" value="${t?.pg_deliveries||0}" placeholder="e.g. 20"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per PG: ~${t?.pg_deliveries?Math.ceil(t.pg_deliveries/2):'—'}</div>
-      </div>
-      <div class="fg">
-        <label>🏎 PG Test Drives</label>
-        <input class="fc" id="tgt-pg-td" type="number" min="0" value="${t?.pg_test_drives||0}" placeholder="e.g. 30"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per PG: ~${t?.pg_test_drives?Math.ceil(t.pg_test_drives/2):'—'}</div>
-      </div>
-    </div>
-    <hr style="border-color:var(--border);margin:14px 0"/>
-    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🚗 Drivers (÷2)</div>
-    <div class="fr c2">
-      <div class="fg">
-        <label>🚗 Driver Deliveries</label>
-        <input class="fc" id="tgt-dr-del" type="number" min="0" value="${t?.driver_deliveries||0}" placeholder="e.g. 20"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per Driver: ~${t?.driver_deliveries?Math.ceil(t.driver_deliveries/2):'—'}</div>
-      </div>
-      <div class="fg">
-        <label>🏎 Driver Test Drives</label>
-        <input class="fc" id="tgt-dr-td" type="number" min="0" value="${t?.driver_test_drives||0}" placeholder="e.g. 30"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per Driver: ~${t?.driver_test_drives?Math.ceil(t.driver_test_drives/2):'—'}</div>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--faint);margin-top:8px">Month: <b style="color:var(--white)">${ym}</b> ${t?'(updating existing target)':'(creating new target)'}</div>
-  `,`
-    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
-    <button class="btn btn-ghost" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="doSaveTarget('${ym}')">🎯 Save Target</button>
-  `);
-
-  // Live preview update
-  setTimeout(()=>{
-    const invEl = document.getElementById('tgt-inv');
-    if(invEl) invEl.oninput = ()=>{
-      const v = parseInt(invEl.value)||0;
-      invEl.nextElementSibling && (invEl.nextElementSibling.textContent = 'Per SE: ~'+(v?Math.ceil(v/seCount):'—')+' invoices each');
-    };
-  },100);
+  openTargetModal();
 }
 
 async function doSaveTarget(ym){
@@ -5152,5 +5053,5 @@ document.addEventListener('click',e=>{
 </script>
 </body>
 </html    return `
-    ${showroomTargetWidget(['sa','admin'].includes(curRole))}
+
     <div class="shd">>
