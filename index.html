@@ -1459,13 +1459,31 @@ function getActiveTarget(){
 
 function getSETarget(seName){
   const t = getActiveTarget(); if(!t) return null;
-  const seList = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
-  const seCount = seList.length;
-  // Individual targets: either custom per-SE or showroom total divided equally
+  const seCount = 6;
   return {
-    bookings:  t['se_'+seName.split(' ')[0].toLowerCase()+'_bookings']  || Math.ceil((t.bookings||0)/seCount),
-    deliveries:t['se_'+seName.split(' ')[0].toLowerCase()+'_deliveries']|| Math.ceil((t.deliveries||0)/seCount),
-    test_drives:t['se_'+seName.split(' ')[0].toLowerCase()+'_test_drives']||Math.ceil((t.test_drives||0)/seCount),
+    invoices: t.invoices ? Math.ceil(t.invoices/seCount) : 0,
+    month: t.month,
+  };
+}
+
+function getPGTarget(pgName){
+  const t = getActiveTarget(); if(!t) return null;
+  const pgList = ['Faizan Asim','Ege Andac'];
+  const pgCount = pgList.length;
+  return {
+    deliveries: t.pg_deliveries ? Math.ceil(t.pg_deliveries/pgCount) : 0,
+    test_drives:t.pg_test_drives? Math.ceil(t.pg_test_drives/pgCount): 0,
+    month: t.month,
+  };
+}
+
+function getDriverTarget(driverName){
+  const t = getActiveTarget(); if(!t) return null;
+  const drivers = ['Zain','Rahul'];
+  const dCount = drivers.length;
+  return {
+    deliveries: t.driver_deliveries ? Math.ceil(t.driver_deliveries/dCount) : 0,
+    test_drives:t.driver_test_drives ? Math.ceil(t.driver_test_drives/dCount): 0,
     month: t.month,
   };
 }
@@ -1491,50 +1509,110 @@ function targetBar(actual, target, label, color){
 }
 
 function seTargetWidget(seName){
-  const t = getSETarget(seName); if(!t) return '';
+  const t = getSETarget(seName); if(!t||!t.invoices) return '';
   const now = new Date();
   const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  const myBk  = DB.bookings.filter(b=>b.se===seName);
-  const myDel = DB.deliveries.filter(d=>myBk.some(b=>b.id===d.booking_id)&&d.status==='Delivered');
-  const myTD  = DB.enquiries.filter(e=>e.se===seName&&(e.test_drive===true||e.test_drive==='true'));
+  const myInv = (DB.invoices||[]).filter(i=>i.se===seName&&(i.invoice_date||'').startsWith(ym)).length;
+  const pct = Math.min(100,Math.round(myInv/t.invoices*100));
+  const col = pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+  return `<div class="card" style="margin-bottom:16px;border-color:${pct>=100?'rgba(34,197,94,.3)':pct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
+    <div class="ch">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Invoice Target — ${monthLabel}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:${col}">${pct}%</div>
+        <div style="font-size:9px;color:var(--faint)">achieved</div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">
+        <span style="font-size:32px;font-weight:800;color:${col};line-height:1">${myInv}</span>
+        <span style="font-size:14px;color:var(--faint)">/ ${t.invoices} invoices this month</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
+        <div style="background:${col};height:10px;width:${pct}%;border-radius:6px;transition:width .4s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--faint);margin-top:5px">${t.invoices-myInv>0?`${t.invoices-myInv} more invoices to reach target`:'🎉 Target reached!'}</div>
+    </div>
+  </div>`;
+}
 
-  // Filter to current month
-  const thisMonth = (dateStr)=>dateStr&&dateStr.startsWith(ym);
-  const bkThisMonth  = myBk.filter(b=>thisMonth(b.date)).length;
-  const delThisMonth = myDel.filter(d=>thisMonth(d.created_at||d.delivery_date)).length;
-  const tdThisMonth  = myTD.filter(e=>thisMonth(e.date)).length;
-
-  const overallPct = Math.round(((bkThisMonth/Math.max(t.bookings,1))+(delThisMonth/Math.max(t.deliveries,1))+(tdThisMonth/Math.max(t.test_drives,1)))/3*100);
-  const overallColor = overallPct>=100?'var(--green)':overallPct>=60?'var(--amber)':'var(--red)';
-
+function pgTargetWidget(pgName){
+  const t = getPGTarget(pgName); if(!t) return '';
+  const now = new Date();
+  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
+  const myDels = DB.deliveries.filter(d=>d.pg_assigned===pgName&&d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym));
+  const myTD   = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym));
+  const delActual = myDels.length;
+  const tdActual  = myTD.length;
+  const delPct = t.deliveries ? Math.min(100,Math.round(delActual/t.deliveries*100)) : 0;
+  const tdPct  = t.test_drives? Math.min(100,Math.round(tdActual/t.test_drives*100)) : 0;
+  const overallPct = t.deliveries||t.test_drives ? Math.round((delPct+(t.test_drives?tdPct:delPct))/2) : 0;
+  const col = p=>p>=100?'var(--green)':p>=60?'var(--amber)':'var(--red)';
+  if(!t.deliveries && !t.test_drives) return '';
   return `<div class="card" style="margin-bottom:16px;border-color:${overallPct>=100?'rgba(34,197,94,.3)':overallPct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
     <div class="ch" style="margin-bottom:12px">
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Monthly Target — ${monthLabel}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;color:${overallColor}">${overallPct}%</div>
+        <div style="font-size:22px;font-weight:800;color:${col(overallPct)}">${overallPct}%</div>
         <div style="font-size:9px;color:var(--faint)">Overall</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-      ${['bookings','deliveries','test_drives'].map((k,i)=>{
-        const labels=['📋 Bookings','🚗 Deliveries','🏎 Test Drives'];
-        const actuals=[bkThisMonth,delThisMonth,tdThisMonth];
-        const tgt=t[k];
-        const pct=Math.min(100,Math.round(actuals[i]/Math.max(tgt,1)*100));
-        const col=pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
-        return `<div style="background:var(--surface2);border-radius:8px;padding:12px 10px;text-align:center">
-          <div style="font-size:9px;color:var(--faint);margin-bottom:6px">${labels[i]}</div>
-          <div style="font-size:20px;font-weight:800;color:${col}">${actuals[i]}</div>
-          <div style="font-size:10px;color:var(--faint);margin:2px 0">/ ${tgt} target</div>
-          <div style="background:var(--surface);border-radius:3px;height:4px;margin-top:6px;overflow:hidden">
-            <div style="background:${col};height:4px;width:${pct}%;border-radius:3px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${[[delActual,t.deliveries,delPct,'🚗 Deliveries'],[tdActual,t.test_drives,tdPct,'🏎 Test Drives']].map(([a,tgt,pct,lbl])=>`
+        <div style="background:var(--surface2);border-radius:8px;padding:14px 12px;text-align:center">
+          <div style="font-size:10px;color:var(--faint);margin-bottom:8px">${lbl}</div>
+          <div style="font-size:26px;font-weight:800;color:${tgt?col(pct):'var(--dim)'};line-height:1">${a}</div>
+          <div style="font-size:11px;color:var(--faint);margin:3px 0">/ ${tgt||'—'} target</div>
+          <div style="background:var(--surface);border-radius:4px;height:6px;margin-top:8px;overflow:hidden">
+            <div style="background:${tgt?col(pct):'var(--surface2)'};height:6px;width:${pct}%;border-radius:4px;transition:width .4s"></div>
           </div>
-          <div style="font-size:10px;font-weight:700;color:${col};margin-top:3px">${pct}%</div>
-        </div>`;
-      }).join('')}
+          <div style="font-size:11px;font-weight:700;color:${tgt?col(pct):'var(--faint)'};margin-top:4px">${tgt?pct+'%':'No target'}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function driverTargetWidget(driverName){
+  const t = getDriverTarget(driverName); if(!t) return '';
+  const now = new Date();
+  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
+  const myDels = DB.deliveries.filter(d=>d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym));
+  const myTD   = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym));
+  const delActual = myDels.length;
+  const tdActual  = myTD.length;
+  const delPct = t.deliveries ? Math.min(100,Math.round(delActual/t.deliveries*100)) : 0;
+  const tdPct  = t.test_drives? Math.min(100,Math.round(tdActual/t.test_drives*100)) : 0;
+  const overallPct = t.deliveries||t.test_drives ? Math.round((delPct+(t.test_drives?tdPct:delPct))/2) : 0;
+  const col = p=>p>=100?'var(--green)':p>=60?'var(--amber)':'var(--red)';
+  if(!t.deliveries && !t.test_drives) return '';
+  return `<div class="card" style="margin-bottom:16px;border-color:${overallPct>=100?'rgba(34,197,94,.3)':overallPct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
+    <div class="ch" style="margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Monthly Target — ${monthLabel}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:${col(overallPct)}">${overallPct}%</div>
+        <div style="font-size:9px;color:var(--faint)">Overall</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${[[delActual,t.deliveries,delPct,'🚗 Deliveries'],[tdActual,t.test_drives,tdPct,'🏎 Test Drives']].map(([a,tgt,pct,lbl])=>`
+        <div style="background:var(--surface2);border-radius:8px;padding:14px 12px;text-align:center">
+          <div style="font-size:10px;color:var(--faint);margin-bottom:8px">${lbl}</div>
+          <div style="font-size:26px;font-weight:800;color:${tgt?col(pct):'var(--dim)'};line-height:1">${a}</div>
+          <div style="font-size:11px;color:var(--faint);margin:3px 0">/ ${tgt||'—'} target</div>
+          <div style="background:var(--surface);border-radius:4px;height:6px;margin-top:8px;overflow:hidden">
+            <div style="background:${tgt?col(pct):'var(--surface2)'};height:6px;width:${pct}%;border-radius:4px;transition:width .4s"></div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:${tgt?col(pct):'var(--faint)'};margin-top:4px">${tgt?pct+'%':'No target'}</div>
+        </div>`).join('')}
     </div>
   </div>`;
 }
@@ -1923,6 +2001,7 @@ dashboard(){
     const doneDels = myDels.filter(d=>d.status==='Delivered').length;
     const myCars = DB.bookings.filter(b=>b.pg_assigned===curUser&&b.pdi>=5&&b.deal!=='Delivered');
     return `
+    ${pgTargetWidget(curUser)}
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--dim);letter-spacing:2px;text-transform:uppercase">Product Genius</div>
@@ -2168,16 +2247,16 @@ dashboard(){
   const sc = s=>s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
 
   if(curRole==='ss') return `
-  ${showroomTargetWidget(true)}
   <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:2px;text-transform:uppercase">Sales Supervisor — Overview</div>
+      <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:2px;text-transform:uppercase">Sales Supervisor</div>
       <div style="font-size:24px;font-weight:800;color:var(--white);margin-top:2px">${curUser}</div>
       <div style="font-size:11px;color:var(--faint);margin-top:2px">${todayStr}</div>
     </div>
     <button class="btn btn-red" onclick="goTo('performance')">📈 Performance →</button>
   </div>
+  ${showroomTargetWidget(true)}
 
   ${todayDel.length?`<div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.25);border-radius:var(--rl);padding:13px 17px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDel.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDel.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
 
@@ -3483,29 +3562,44 @@ function openSetTargetModal(){
   const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
   const seCount = 6; // Number of SEs
 
-  const bkT  = t?.bookings    || 0;
-  const delT = t?.deliveries  || 0;
-  const tdT  = t?.test_drives || 0;
+  // (invoices, pg_deliveries, pg_test_drives, driver_deliveries, driver_test_drives)
 
   openM(`🎯 Set Monthly Target — ${monthLabel}`,`
     <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:11px 14px;margin-bottom:14px;font-size:12px;color:var(--amber)">
       📋 Set the showroom total target. It will be divided equally among all ${seCount} Sales Executives.
     </div>
-    <div class="fr c3">
+    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🧾 Sales Executives — Invoice Target (÷6)</div>
+    <div class="fg">
+      <label>Showroom Invoice Target</label>
+      <input class="fc" id="tgt-inv" type="number" min="0" value="${t?.invoices||0}" placeholder="e.g. 24"/>
+      <div style="font-size:10px;color:var(--faint);margin-top:4px">Per SE: ~${t?.invoices?Math.ceil(t.invoices/seCount):'—'} invoices each</div>
+    </div>
+    <hr style="border-color:var(--border);margin:14px 0"/>
+    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🔧 Product Genius (÷2)</div>
+    <div class="fr c2">
       <div class="fg">
-        <label>📋 Bookings Target</label>
-        <input class="fc" id="tgt-bk" type="number" min="0" value="${bkT}" placeholder="e.g. 30"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per SE: ~${bkT?Math.ceil(bkT/seCount):'—'}</div>
+        <label>🚗 PG Deliveries</label>
+        <input class="fc" id="tgt-pg-del" type="number" min="0" value="${t?.pg_deliveries||0}" placeholder="e.g. 20"/>
+        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per PG: ~${t?.pg_deliveries?Math.ceil(t.pg_deliveries/2):'—'}</div>
       </div>
       <div class="fg">
-        <label>🚗 Deliveries Target</label>
-        <input class="fc" id="tgt-del" type="number" min="0" value="${delT}" placeholder="e.g. 25"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per SE: ~${delT?Math.ceil(delT/seCount):'—'}</div>
+        <label>🏎 PG Test Drives</label>
+        <input class="fc" id="tgt-pg-td" type="number" min="0" value="${t?.pg_test_drives||0}" placeholder="e.g. 30"/>
+        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per PG: ~${t?.pg_test_drives?Math.ceil(t.pg_test_drives/2):'—'}</div>
+      </div>
+    </div>
+    <hr style="border-color:var(--border);margin:14px 0"/>
+    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🚗 Drivers (÷2)</div>
+    <div class="fr c2">
+      <div class="fg">
+        <label>🚗 Driver Deliveries</label>
+        <input class="fc" id="tgt-dr-del" type="number" min="0" value="${t?.driver_deliveries||0}" placeholder="e.g. 20"/>
+        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per Driver: ~${t?.driver_deliveries?Math.ceil(t.driver_deliveries/2):'—'}</div>
       </div>
       <div class="fg">
-        <label>🏎 Test Drives Target</label>
-        <input class="fc" id="tgt-td" type="number" min="0" value="${tdT}" placeholder="e.g. 60"/>
-        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per SE: ~${tdT?Math.ceil(tdT/seCount):'—'}</div>
+        <label>🏎 Driver Test Drives</label>
+        <input class="fc" id="tgt-dr-td" type="number" min="0" value="${t?.driver_test_drives||0}" placeholder="e.g. 30"/>
+        <div style="font-size:10px;color:var(--faint);margin-top:4px">Per Driver: ~${t?.driver_test_drives?Math.ceil(t.driver_test_drives/2):'—'}</div>
       </div>
     </div>
     <div style="font-size:11px;color:var(--faint);margin-top:8px">Month: <b style="color:var(--white)">${ym}</b> ${t?'(updating existing target)':'(creating new target)'}</div>
@@ -3516,30 +3610,32 @@ function openSetTargetModal(){
 
   // Live preview update
   setTimeout(()=>{
-    ['tgt-bk','tgt-del','tgt-td'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el) el.oninput = ()=>{
-        const v = parseInt(el.value)||0;
-        el.nextElementSibling && (el.nextElementSibling.textContent = 'Per SE: ~'+(v?Math.ceil(v/seCount):'—'));
-      };
-    });
+    const invEl = document.getElementById('tgt-inv');
+    if(invEl) invEl.oninput = ()=>{
+      const v = parseInt(invEl.value)||0;
+      invEl.nextElementSibling && (invEl.nextElementSibling.textContent = 'Per SE: ~'+(v?Math.ceil(v/seCount):'—')+' invoices each');
+    };
   },100);
 }
 
 async function doSaveTarget(ym){
-  const bk  = parseInt(document.getElementById('tgt-bk')?.value)||0;
-  const del = parseInt(document.getElementById('tgt-del')?.value)||0;
-  const td  = parseInt(document.getElementById('tgt-td')?.value)||0;
-  if(!bk && !del && !td){ toast('Please enter at least one target','warn'); return; }
+  const inv  = parseInt(document.getElementById('tgt-inv')?.value)||0;
+  const pgDel= parseInt(document.getElementById('tgt-pg-del')?.value)||0;
+  const pgTD = parseInt(document.getElementById('tgt-pg-td')?.value)||0;
+  const drDel= parseInt(document.getElementById('tgt-dr-del')?.value)||0;
+  const drTD = parseInt(document.getElementById('tgt-dr-td')?.value)||0;
+  if(!inv && !pgDel && !pgTD){ toast('Please enter at least one target','warn'); return; }
 
   const existing = getActiveTarget();
   const record = {
-    month:       ym,
-    bookings:    bk,
-    deliveries:  del,
-    test_drives: td,
-    set_by:      curUser,
-    updated_at:  new Date().toISOString(),
+    month:             ym,
+    invoices:          inv,
+    pg_deliveries:     pgDel,
+    pg_test_drives:    pgTD,
+    driver_deliveries: drDel,
+    driver_test_drives:drTD,
+    set_by:            curUser,
+    updated_at:        new Date().toISOString(),
   };
 
   let error;
@@ -3550,7 +3646,7 @@ async function doSaveTarget(ym){
   }
   if(error){ toast('Error: '+error.message,'err'); return; }
   closeM();
-  toast(`Target saved — ${bk} bookings / ${del} deliveries / ${td} test drives ✓`,'ok');
+  toast(`Target saved — SE: ${inv} invoices | PG: ${pgDel}del/${pgTD}TD | Driver: ${drDel}del/${drTD}TD ✓`,'ok');
   await loadAll();
   goTo('dashboard');
 }
