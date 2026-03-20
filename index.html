@@ -1994,46 +1994,107 @@ dashboard(){
   </div>
   `;
 
-  // ── Admin dashboard (unchanged fallback) ──
-  const openFlags2 = (DB.flags||[]).filter(f=>f.status==='Open').length;
+  // ── Admin dashboard ──
+  const allBkA    = DB.bookings;
+  const allEnqA   = DB.enquiries||[];
+  const allDelsA  = DB.deliveries||[];
+  const allInvA   = DB.invoices||[];
+  const allRegsA  = DB.registrations||[];
+  const allFlagsA = DB.flags||[];
+  const openEnqA    = allEnqA.filter(e=>e.status==='Open'||e.status==='Follow-Up').length;
+  const totalBkA    = allBkA.filter(b=>b.deal!=='Lost').length;
+  const totalInvA   = allInvA.length;
+  const totalRegA   = allRegsA.length;
+  const totalDelA   = allDelsA.filter(d=>d.status==='Delivered').length;
+  const testDrivesA = allEnqA.filter(e=>e.test_drive===true||e.test_drive==='true').length;
+  const pdiActA     = allBkA.filter(b=>b.pdi>0&&b.pdi<6).length;
+  const readyDA     = allBkA.filter(b=>b.deal==='Ready for Delivery').length;
+  const openFlagsA  = allFlagsA.filter(f=>f.status==='Open').length;
+  const todayDelA   = allDelsA.filter(d=>d.delivery_date===today);
+  const lostBkA     = allBkA.filter(b=>b.deal==='Lost').length;
+  const pipelineCountsA = DEAL_STAGES.filter(s=>s!=='Lost').map(s=>({stage:s,count:allBkA.filter(b=>b.deal===s).length}));
+  const seListA = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
+  const seRatiosA = seListA.map(se=>({
+    se:se.split(' ')[0], bookings:allBkA.filter(b=>b.se===se&&b.deal!=='Lost').length,
+    delivered:allBkA.filter(b=>b.se===se&&b.deal==='Delivered').length,
+    invoiced:allBkA.filter(b=>b.se===se&&b.deal==='Invoiced').length,
+    testDrives:allEnqA.filter(e=>e.se===se&&(e.test_drive===true||e.test_drive==='true')).length,
+    enquiries:allEnqA.filter(e=>e.se===se).length,
+  }));
+  const maxBkA = Math.max(...seRatiosA.map(r=>r.bookings),1);
+  const DAYS_A=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayIdxA=new Date().getDay();
+  const myRA=ROSTER_DATA.find(r=>r.name===curUser);
+  const scA=s=>s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
+  const stageColorsA={'Delivered':'var(--green)','Invoiced':'var(--amber)','Registered':'#a855f7','Ready for Delivery':'#22d3ee','Insured':'#60a5fa'};
 
   return `
   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:10px;font-weight:700;color:var(--dim);letter-spacing:2px;text-transform:uppercase">${curRole==='ss'?'Sales Supervisor':'Admin'} — Overview</div>
+      <div style="font-size:10px;font-weight:700;color:var(--amber);letter-spacing:2px;text-transform:uppercase">Admin — Full Control</div>
       <div style="font-size:24px;font-weight:800;color:var(--white);margin-top:2px">${curUser}</div>
       <div style="font-size:11px;color:var(--faint);margin-top:2px">${todayStr}</div>
     </div>
-    <button class="btn btn-red" onclick="goTo('performance')">📈 Performance →</button>
-  </div>
-  <div class="sg">
-    <div class="sc red"><div class="slbl">Total Bookings</div><div class="sval" style="color:var(--red)">${bks.length}</div><div class="ssub">Full team pipeline</div><div class="sico">📋</div></div>
-    <div class="sc amber"><div class="slbl">PDI In Progress</div><div class="sval" style="color:var(--amber)">${pdiAct}</div><div class="ssub">Awaiting readiness</div><div class="sico">🔧</div></div>
-    <div class="sc green"><div class="slbl">Ready for Delivery</div><div class="sval" style="color:var(--green)">${readyD}</div><div class="ssub">Schedule pending</div><div class="sico">🚗</div></div>
-    <div class="sc blue"><div class="slbl">Open Enquiries</div><div class="sval" style="color:var(--blue)">${openEnq}</div><div class="ssub">Require follow-up</div><div class="sico">🔍</div></div>
-  </div>
-  ${todayDel.length?`<div style="background:rgba(226,0,26,.05);border:1px solid rgba(226,0,26,.2);border-radius:var(--rl);padding:13px 17px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDel.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDel.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
-  <div class="g2">
-    <div class="card">
-      <div class="ch"><div class="ct">📋 Recent Bookings</div><button class="btn btn-ghost btn-xs" onclick="goTo('bookings')">All →</button></div>
-      <table class="tbl"><thead><tr><th>ID</th><th>Customer</th><th>Model</th><th>SE</th><th>Stage</th></tr></thead><tbody>
-        ${bks.slice(0,5).map(b=>`<tr><td class="tm tb">${b.id}</td><td class="tb">${b.customer.split(' ').slice(0,2).join(' ')}</td><td style="font-size:10px">${b.model||'—'}</td><td style="font-size:10px">${(b.se||'').split(' ')[0]}</td><td>${dealBadge(b.deal)}</td></tr>`).join('')}
-      </tbody></table>
-    </div>
-    <div class="card">
-      <div class="ch"><div class="ct">🔧 PDI Status</div></div>
-      <div class="cb">
-        ${PDI_STAGES.map((s,i)=>{const cnt=bks.filter(b=>b.pdi===i).length;const pct=bks.length?Math.round(cnt/bks.length*100):0;return `<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--dim)">${s}</span><span style="color:var(--faint);font-family:'Space Mono',monospace">${cnt}</span></div><div class="pb"><div class="pf pf-red" style="width:${pct}%"></div></div></div>`;}).join('')}
-      </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="goTo('upload')">📤 Upload</button>
+      <button class="btn btn-ghost" style="color:var(--amber);border-color:rgba(245,158,11,.3)" onclick="goTo('performance')">📈 Performance →</button>
     </div>
   </div>
+
+  ${todayDelA.length?`<div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.25);border-radius:var(--rl);padding:13px 17px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDelA.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDelA.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
+
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px">
+    ${[{l:'Open Enquiries',v:openEnqA,ico:'🔍',c:'var(--blue)',a:"goTo('enquiries')"},{l:'Active Bookings',v:totalBkA,ico:'📋',c:'var(--red)',a:"goTo('bookings')"},{l:'Invoiced',v:totalInvA,ico:'🧾',c:'var(--amber)',a:"goTo('invoice')"},{l:'Registered',v:totalRegA,ico:'🪪',c:'#a855f7',a:"goTo('registration')"},{l:'Delivered',v:totalDelA,ico:'✅',c:'var(--green)',a:"goTo('delivery')"}].map(k=>`<div class="card" style="text-align:center;padding:14px 6px;cursor:pointer" onclick="${k.a}"><div style="font-size:8px;color:var(--faint);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">${k.ico} ${k.l}</div><div style="font-size:28px;font-weight:800;color:${k.c};line-height:1">${k.v}</div></div>`).join('')}
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px">
+    ${[{l:'Test Drives',v:testDrivesA,ico:'🏎',c:'#22d3ee'},{l:'PDI In Progress',v:pdiActA,ico:'🔧',c:'var(--amber)'},{l:'Ready to Deliver',v:readyDA,ico:'🚗',c:'var(--green)'},{l:'Open Flags',v:openFlagsA,ico:'🚩',c:'var(--red)'},{l:'Lost Deals',v:lostBkA,ico:'💔',c:'var(--dim)'}].map(k=>`<div class="card" style="display:flex;align-items:center;gap:10px;padding:11px 12px"><span style="font-size:18px">${k.ico}</span><div><div style="font-size:18px;font-weight:800;color:${k.c};line-height:1">${k.v}</div><div style="font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.3px;margin-top:2px">${k.l}</div></div></div>`).join('')}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-bottom:12px">
+    <div class="card">
+      <div class="ch"><div class="ct">💼 Deal Pipeline</div><span style="font-size:10px;color:var(--faint)">${totalBkA} active</span></div>
+      ${pipelineCountsA.filter(p=>p.count>0).map(p=>{const pct=Math.round(p.count/Math.max(totalBkA,1)*100);const col=stageColorsA[p.stage]||'var(--blue)';return `<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--dim)">${p.stage}</span><span style="color:var(--faint);font-family:'Space Mono',monospace">${p.count} <span style="font-size:9px;opacity:.7">${pct}%</span></span></div><div class="pb"><div class="pf" style="width:${pct}%;background:${col}"></div></div></div>`;}).join('')}
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">👥 SE Performance</div><button class="btn btn-ghost btn-xs" onclick="goTo('performance')">Full →</button></div>
+      <table style="width:100%;font-size:11px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:4px 8px;font-size:9px;color:var(--faint);text-transform:uppercase">SE</th>
+          <th style="text-align:center;padding:4px 4px;font-size:9px;color:var(--blue);text-transform:uppercase">Enq</th>
+          <th style="text-align:center;padding:4px 4px;font-size:9px;color:#22d3ee;text-transform:uppercase">TD</th>
+          <th style="text-align:center;padding:4px 4px;font-size:9px;color:var(--red);text-transform:uppercase">Bkgs</th>
+          <th style="text-align:center;padding:4px 4px;font-size:9px;color:var(--amber);text-transform:uppercase">Inv</th>
+          <th style="text-align:center;padding:4px 4px;font-size:9px;color:var(--green);text-transform:uppercase">Del</th>
+          <th style="padding:4px 8px;font-size:9px;color:var(--faint);text-transform:uppercase">Share</th>
+        </tr></thead>
+        <tbody>${seRatiosA.map(r=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 8px;font-weight:600;color:var(--white)">${r.se}</td><td style="text-align:center;padding:7px 4px;color:var(--blue)">${r.enquiries}</td><td style="text-align:center;padding:7px 4px;color:#22d3ee">${r.testDrives}</td><td style="text-align:center;padding:7px 4px;color:var(--red);font-weight:700">${r.bookings}</td><td style="text-align:center;padding:7px 4px;color:var(--amber)">${r.invoiced}</td><td style="text-align:center;padding:7px 4px;color:var(--green);font-weight:700">${r.delivered}</td><td style="padding:7px 8px"><div style="background:var(--surface2);border-radius:3px;height:5px"><div style="background:var(--red);border-radius:3px;height:5px;width:${Math.round(r.bookings/maxBkA*100)}%"></div></div></td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="ch"><div class="ct">🏎 Test Drives by SE</div><span style="font-size:10px;color:var(--faint)">${testDrivesA} total</span></div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:8px 0">
+      ${seRatiosA.map(r=>{const pct=Math.round(r.testDrives/Math.max(testDrivesA,1)*100);return `<div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#22d3ee;line-height:1">${r.testDrives}</div><div style="font-size:9px;color:var(--faint);text-transform:uppercase;margin:3px 0 5px">${r.se}</div><div style="background:var(--surface2);border-radius:3px;height:4px;margin:0 4px"><div style="background:#22d3ee;border-radius:3px;height:4px;width:${pct}%"></div></div></div>`;}).join('')}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="card">
+      <div class="ch"><div class="ct">🏎 Demo Cars</div><div style="display:flex;gap:6px;align-items:center"><span class="badge bg" style="font-size:9px">${(DB.demo||[]).filter(d=>d.status==='Available').length} Available</span><button class="btn btn-ghost btn-xs" onclick="goTo('demo')">Manage →</button></div></div>
+      ${(DB.demo||[]).length?`<table class="tbl" style="font-size:11px"><thead><tr><th>Model</th><th>Color</th><th>Mileage</th><th>Status</th></tr></thead><tbody>${(DB.demo||[]).map(d=>`<tr><td class="tb">${d.model||'—'}</td><td style="font-size:10px;color:var(--faint)">${d.color||'—'}</td><td style="font-size:10px;font-family:'Space Mono',monospace">${d.mileage||'—'}</td><td><span class="badge ${d.status==='Available'?'bg':d.status==='On Demo'?'ba':'br'}" style="font-size:9px">${d.status}</span></td></tr>`).join('')}</tbody></table>`:`<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint)">No demo cars</div>`}
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">🚩 Active Flags</div><span class="badge br">${openFlagsA} Open</span></div>
+      ${allFlagsA.filter(f=>f.status==='Open').length?`<div style="max-height:240px;overflow-y:auto">${allFlagsA.filter(f=>f.status==='Open').map(f=>`<div class="flg"><div style="font-size:15px">🚩</div><div style="flex:1;min-width:0"><div class="flg-ttl">${f.title}</div><div style="font-size:11px;color:var(--dim);margin-top:2px">${f.body}</div><div style="font-size:10px;color:var(--faint);margin-top:2px">By ${f.raised_by} · SE: ${f.se}</div></div><button class="btn btn-ghost btn-xs" onclick="doResolveFlag('${f.id}')">Resolve</button></div>`).join('')}</div>`:`<div style="padding:14px;text-align:center;font-size:12px;color:var(--faint)">No open flags 🎉</div>`}
+    </div>
+  </div>
+
   <div class="card">
-    <div class="ch"><div class="ct">💼 Deal Pipeline — Full Team</div></div>
-    <div class="cb" style="padding:8px 16px">
-      <div class="pipe-stages">${DEAL_STAGES.map(s=>{const cnt=DB.bookings.filter(b=>b.deal===s).length;return `<div class="pipe-st"><div class="pipe-num" style="color:${cnt?'var(--white)':'var(--faint)'}">${cnt}</div><div class="pipe-name">${s}</div></div>`;}).join('')}</div>
-    </div>
+    <div class="ch"><div class="ct">🗓 My Schedule</div>${myRA?`<span style="font-size:14px;font-weight:800;color:${scA(myRA.days[todayIdxA])}">${myRA.days[todayIdxA]} <span style="font-size:10px;color:var(--faint);font-weight:400">today</span></span>`:''}</div>
+    ${myRA?`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;padding:4px 0">${DAYS_A.map((d,i)=>{const st=myRA.days[i];const isT=i===todayIdxA;return '<div style="background:var(--surface2);border-radius:8px;padding:8px 4px'+(isT?';outline:2px solid var(--amber)':'')+'">'+'<div style="font-size:9px;color:var(--faint);text-transform:uppercase;margin-bottom:3px">'+d+'</div>'+'<div style="font-size:13px;font-weight:800;color:'+scA(st)+'">'+st+'</div></div>';}).join('')}</div>`:`<div style="font-size:12px;color:var(--faint);padding:8px">Not in roster</div>`}
   </div>
-  ${openFlags>0?`<div class="card"><div class="ch"><div class="ct">🚩 Active Flags</div><span class="badge br">${openFlags} Open</span></div><div class="cb">${DB.flags.filter(f=>f.status==='Open').map(f=>`<div class="flg"><div style="font-size:16px">🚩</div><div style="flex:1"><div class="flg-ttl">${f.title}</div><div class="flg-body">${f.body}</div><div class="flg-meta">Raised by ${f.raised_by} · SE: ${f.se}</div></div>${canDeal()?`<button class="btn btn-ghost btn-xs" onclick="doResolveFlag('${f.id}')">Resolve</button>`:''}  </div>`).join('')}</div></div>`:''}
   `
     },
 
@@ -3744,11 +3805,27 @@ async function doImport(type){
           notes: mergeNotes(prev.notes, r.notes),
         };
       } else {
-        // Enquiries: merge notes, preserve assigned SE if already set
+        // Enquiries: CSV wins for core info, preserve manually-set fields
         return {
           ...r,
-          se: (prev.se && prev.se!=='Unassigned') ? prev.se : r.se,
+          // CSV fields always win (fresh data)
+          customer:    r.customer    || prev.customer,
+          model:       r.model       || prev.model,
+          source:      r.source      || prev.source,
+          date:        r.date        || prev.date,
+          test_drive:  r.test_drive  !== undefined ? r.test_drive : prev.test_drive,
+          // Preserve manually-set fields
+          se:          (prev.se && prev.se!=='Unassigned') ? prev.se : r.se,
+          // Preserve status unless CSV has a more advanced one
+          status: (()=>{
+            const order = ['Open','Follow-Up','Converted to Booking','Closed','Lost'];
+            const pi = order.indexOf(prev.status);
+            const ri = order.indexOf(r.status);
+            return pi > ri ? prev.status : r.status;
+          })(),
+          // Merge notes without duplication
           notes: mergeNotes(prev.notes, r.notes),
+          interest: r.interest || prev.interest,
         };
       }
     });
