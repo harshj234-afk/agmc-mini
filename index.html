@@ -1038,7 +1038,7 @@ async function loadAll(){
   DB.updates       = await q('booking_updates','created_at.desc');
   DB.invoices      = await q('invoices','created_at.desc');
   DB.registrations = await q('registrations','created_at.desc');
-  DB.targets       = await q('sales_targets','year.desc,month.desc');
+  DB.targets       = await q('targets','updated_at.desc');
   // Parse JSON fields in targets
   DB.targets = DB.targets.map(t=>({
     ...t,
@@ -1404,7 +1404,7 @@ function targetBanner(role){
           <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.5px">🎯 SHOWROOM TARGET — ${monthName.toUpperCase()} ${year}</div>
           ${!t?'<div style="font-size:10px;color:var(--red);margin-top:2px">No target set yet</div>':''}
         </div>
-        ${canEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:rgba(226,0,26,.3)" onclick="openTargetModal()">
+        ${false?`<button class="btn btn-ghost btn-sm" onclick="openTargetModal()">
           ${t?'✏️ Edit Target':'+ Set Target'}
         </button>`:''}
       </div>
@@ -1555,44 +1555,6 @@ function pgTargetWidget(pgName){
   </div>`;
 }
 
-function driverTargetWidget(driverName){
-  const t = getDriverTarget(driverName); if(!t) return '';
-  const now = new Date();
-  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  const myDels = DB.deliveries.filter(d=>d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym));
-  const myTD   = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym));
-  const delActual = myDels.length;
-  const tdActual  = myTD.length;
-  const delPct = t.deliveries ? Math.min(100,Math.round(delActual/t.deliveries*100)) : 0;
-  const tdPct  = t.test_drives? Math.min(100,Math.round(tdActual/t.test_drives*100)) : 0;
-  const overallPct = t.deliveries||t.test_drives ? Math.round((delPct+(t.test_drives?tdPct:delPct))/2) : 0;
-  const col = p=>p>=100?'var(--green)':p>=60?'var(--amber)':'var(--red)';
-  if(!t.deliveries && !t.test_drives) return '';
-  return `<div class="card" style="margin-bottom:16px;border-color:${overallPct>=100?'rgba(34,197,94,.3)':overallPct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
-    <div class="ch" style="margin-bottom:12px">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Monthly Target — ${monthLabel}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;color:${col(overallPct)}">${overallPct}%</div>
-        <div style="font-size:9px;color:var(--faint)">Overall</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      ${[[delActual,t.deliveries,delPct,'🚗 Deliveries'],[tdActual,t.test_drives,tdPct,'🏎 Test Drives']].map(([a,tgt,pct,lbl])=>`
-        <div style="background:var(--surface2);border-radius:8px;padding:14px 12px;text-align:center">
-          <div style="font-size:10px;color:var(--faint);margin-bottom:8px">${lbl}</div>
-          <div style="font-size:26px;font-weight:800;color:${tgt?col(pct):'var(--dim)'};line-height:1">${a}</div>
-          <div style="font-size:11px;color:var(--faint);margin:3px 0">/ ${tgt||'—'} target</div>
-          <div style="background:var(--surface);border-radius:4px;height:6px;margin-top:8px;overflow:hidden">
-            <div style="background:${tgt?col(pct):'var(--surface2)'};height:6px;width:${pct}%;border-radius:4px;transition:width .4s"></div>
-          </div>
-          <div style="font-size:11px;font-weight:700;color:${tgt?col(pct):'var(--faint)'};margin-top:4px">${tgt?pct+'%':'No target'}</div>
-        </div>`).join('')}
-    </div>
-  </div>`;
-}
 
 function showroomTargetWidget(editable){
   const t = getActiveTarget();
@@ -3433,124 +3395,227 @@ async function doCompleteRegistration(invoiceId){
 // ══════════════════════════════════════
 // TARGET MANAGEMENT
 // ══════════════════════════════════════
-function openTargetModal(){
-  const t   = getCurrentMonthTarget();
-  const now = new Date();
-  const monthName = now.toLocaleString('en-AE',{month:'long'});
-  const year = now.getFullYear();
-  const month= now.getMonth()+1;
-  const perSe= SE_LIST.length;
+// ══════════════════════════════════════
+// TARGET SYSTEM
+// ══════════════════════════════════════
+function getActiveTarget(){
+  const ym = new Date().toISOString().slice(0,7); // YYYY-MM
+  return (DB.targets||[]).find(t=>t.month===ym) || null;
+}
 
-  openM(`🎯 Set Target — ${monthName} ${year}`,`
-    <div style="background:var(--surface2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:11px;color:var(--dim)">
-      Showroom totals will be <b style="color:var(--white)">equally divided</b> across ${perSe} SEs.
-      You can override individual SE targets below.
+function getSETarget(se){
+  const t = getActiveTarget(); if(!t) return null;
+  const n = 6; // 6 SEs
+  return { invoices: t.invoices ? Math.ceil(t.invoices/n) : 0, month: t.month };
+}
+
+function getPGTarget(){
+  const t = getActiveTarget(); if(!t) return null;
+  const n = 2; // 2 PGs
+  return {
+    deliveries:  t.pg_deliveries  ? Math.ceil(t.pg_deliveries/n)  : 0,
+    test_drives: t.pg_test_drives ? Math.ceil(t.pg_test_drives/n) : 0,
+    month: t.month,
+  };
+}
+
+// ── SE Target Widget (top of SE dashboard) ──
+function seTargetWidget(seName){
+  const t = getSETarget(seName); if(!t || !t.invoices) return '';
+  const ym = t.month;
+  const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  const myInv = (DB.invoices||[]).filter(i=>i.se===seName && (i.invoice_date||'').startsWith(ym)).length;
+  const pct = Math.min(100, Math.round(myInv / t.invoices * 100));
+  const col = pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+  const borderCol = pct>=100?'rgba(34,197,94,.3)':pct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)';
+  return `<div class="card" style="margin-bottom:16px;border-color:${borderCol}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Invoice Target — ${monthLabel}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:${col}">${pct}%</div>
+        <div style="font-size:9px;color:var(--faint)">achievement</div>
+      </div>
     </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:4px">🧾 Invoices This Month</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:28px;font-weight:800;color:${col}">${myInv}</span>
+          <span style="font-size:13px;color:var(--faint)">/ ${t.invoices} target</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--faint);margin-bottom:4px">Remaining</div>
+        <div style="font-size:20px;font-weight:700;color:${pct>=100?'var(--green)':'var(--white)'}">${Math.max(0,t.invoices-myInv)}</div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;margin-top:10px">
+      <div style="background:${col};height:8px;width:${pct}%;border-radius:4px;transition:width .4s"></div>
+    </div>
+  </div>`;
+}
+
+// ── PG Target Widget (top of PG dashboard) ──
+function pgTargetWidget(pgName){
+  const t = getPGTarget(); if(!t||(!t.deliveries&&!t.test_drives)) return '';
+  const ym = t.month;
+  const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  const myDel = (DB.deliveries||[]).filter(d=>d.pg_assigned===pgName&&d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym)).length;
+  const myTD  = (DB.enquiries||[]).filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym)).length;
+  const delPct = t.deliveries ? Math.min(100,Math.round(myDel/t.deliveries*100)) : 0;
+  const tdPct  = t.test_drives? Math.min(100,Math.round(myTD/t.test_drives*100)) : 0;
+  const overall= Math.round((delPct+(t.test_drives?tdPct:delPct))/2);
+  const col = p=>p>=100?'var(--green)':p>=60?'var(--amber)':'var(--red)';
+  const borderCol = overall>=100?'rgba(34,197,94,.3)':overall>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)';
+  return `<div class="card" style="margin-bottom:16px;border-color:${borderCol}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Monthly Target — ${monthLabel}</div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:${col(overall)}">${overall}%</div>
+        <div style="font-size:9px;color:var(--faint)">overall</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${[[myDel,t.deliveries,delPct,'🚗 Deliveries'],[myTD,t.test_drives,tdPct,'🏎 Test Drives']].map(([a,tgt,pct,lbl])=>`
+        <div style="background:var(--surface2);border-radius:8px;padding:13px 12px;text-align:center">
+          <div style="font-size:10px;color:var(--faint);margin-bottom:6px">${lbl}</div>
+          <div style="font-size:24px;font-weight:800;color:${tgt?col(pct):'var(--dim)'};line-height:1">${a}</div>
+          <div style="font-size:10px;color:var(--faint);margin:3px 0">/ ${tgt||'—'} target</div>
+          <div style="background:var(--surface);border-radius:3px;height:5px;margin-top:7px;overflow:hidden">
+            <div style="background:${tgt?col(pct):'var(--surface2)'};height:5px;width:${pct}%;border-radius:3px;transition:width .4s"></div>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:${tgt?col(pct):'var(--faint)'};margin-top:3px">${tgt?pct+'%':'—'}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── Showroom Target Widget (SS / SA / Admin dashboards) ──
+function showroomTargetWidget(editable){
+  const t = getActiveTarget();
+  const ym = new Date().toISOString().slice(0,7);
+  const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  // Showroom actuals this month
+  const allInv = (DB.invoices||[]).filter(i=>(i.invoice_date||'').startsWith(ym)).length;
+  const allDel = (DB.deliveries||[]).filter(d=>d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym)).length;
+  const allTD  = (DB.enquiries||[]).filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym)).length;
+  const invT = t?.invoices||0;
+  const delT = t?.pg_deliveries||0;
+  const tdT  = t?.pg_test_drives||0;
+  const invPct = invT ? Math.min(100,Math.round(allInv/invT*100)) : 0;
+  const delPct = delT ? Math.min(100,Math.round(allDel/delT*100)) : 0;
+  const tdPct  = tdT  ? Math.min(100,Math.round(allTD/tdT*100))  : 0;
+  const overall= (invT||delT||tdT) ? Math.round((invPct+(delT?delPct:invPct)+(tdT?tdPct:invPct))/3) : 0;
+  const col = overall>=100?'var(--green)':overall>=60?'var(--amber)':'var(--red)';
+  const borderCol = overall>=100?'rgba(34,197,94,.3)':overall>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)';
+  return `<div class="card" style="margin-bottom:14px;border-color:${borderCol}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Showroom Target — ${monthLabel}</div>
+        ${!t?'<div style="font-size:11px;color:var(--amber);margin-top:2px">⚠️ No target set for this month</div>':''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:800;color:${col}">${overall}%</div>
+          <div style="font-size:9px;color:var(--faint)">overall</div>
+        </div>
+        ${editable?`<button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:rgba(245,158,11,.3)" onclick="openSetTargetModal()">✏️ ${t?'Edit':'Set'} Target</button>`:''}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      ${[
+        {l:'🧾 SE Invoices',    a:allInv, tgt:invT, pct:invPct, sub:'÷6 per SE'},
+        {l:'🚗 PG Deliveries',  a:allDel, tgt:delT, pct:delPct, sub:'÷2 per PG'},
+        {l:'🏎 PG Test Drives', a:allTD,  tgt:tdT,  pct:tdPct,  sub:'÷2 per PG'},
+      ].map(({l,a,tgt,pct,sub})=>{
+        const c=pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+        return `<div style="background:var(--surface2);border-radius:8px;padding:11px 10px;text-align:center">
+          <div style="font-size:9px;color:var(--faint);margin-bottom:4px">${l}</div>
+          <div style="font-size:20px;font-weight:800;color:${tgt?c:'var(--dim)'}">${a}</div>
+          <div style="font-size:9px;color:var(--faint);margin:2px 0">/ ${tgt||'—'} &nbsp;<span style="opacity:.6">${sub}</span></div>
+          <div style="background:var(--surface);border-radius:3px;height:4px;margin-top:6px;overflow:hidden">
+            <div style="background:${tgt?c:'var(--surface2)'};height:4px;width:${pct}%;border-radius:3px"></div>
+          </div>
+          <div style="font-size:9px;font-weight:700;color:${tgt?c:'var(--faint)'};margin-top:3px">${tgt?pct+'%':'—'}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function openSetTargetModal(){
+  const t = getActiveTarget();
+  const ym = new Date().toISOString().slice(0,7);
+  const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  openM(`🎯 Set Monthly Target — ${monthLabel}`,`
+    <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--amber)">
+      Targets set here divide equally among the team. SE gets invoices ÷ 6. PG gets deliveries & test drives ÷ 2.
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🧾 Sales Executives — Invoice Target (÷ 6)</div>
     <div class="fg">
-      <label>🧾 Showroom Invoice Target <span style="font-size:10px;color:var(--faint)">(divides equally across ${perSe} SEs)</span></label>
-      <input class="fc" type="number" id="tgt-inv" min="0" max="200"
-        value="${t?.showroom_invoices||''}" placeholder="e.g. 24"/>
-      <div style="font-size:10px;color:var(--faint);margin-top:3px">Each SE gets ~${t?Math.round((t.showroom_invoices||0)/perSe):0} invoices</div>
+      <label>Total Showroom Invoices</label>
+      <input class="fc" id="tgt-inv" type="number" min="0" value="${t?.invoices||''}" placeholder="e.g. 24"/>
+      <div style="font-size:10px;color:var(--faint);margin-top:4px" id="tgt-inv-hint">Per SE: ~${t?.invoices?Math.ceil(t.invoices/6):'—'}</div>
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
-      <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
-        Individual SE Overrides <span style="font-weight:400;text-transform:none">(optional — leave blank to use equal split)</span>
+    <hr style="border-color:var(--border);margin:14px 0"/>
+    <div style="font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🔧 Product Genius (÷ 2)</div>
+    <div class="fr c2">
+      <div class="fg">
+        <label>🚗 PG Deliveries</label>
+        <input class="fc" id="tgt-pg-del" type="number" min="0" value="${t?.pg_deliveries||''}" placeholder="e.g. 20"/>
+        <div style="font-size:10px;color:var(--faint);margin-top:3px" id="tgt-pg-del-hint">Per PG: ~${t?.pg_deliveries?Math.ceil(t.pg_deliveries/2):'—'}</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        ${SE_LIST.map(se=>{
-          const ov = t?.se_overrides?.[se] ?? '';
-          const oi = t?.se_invoice_overrides?.[se] ?? '';
-          return '<div style="background:var(--surface2);border-radius:var(--r);padding:10px 12px">'
-            +'<div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:6px">'+se.split(' ')[0]+'</div>'
-            +'<div class="fr c2" style="gap:6px">'
-            +'<div class="fg" style="margin-bottom:0"><label style="font-size:9px">Bookings</label><input class="fc" type="number" id="tgt-se-bk-'+se.replace(/ /g,'_')+'" value="'+ov+'" placeholder="—" style="padding:5px 8px;font-size:12px"/></div>'
-            +'<div class="fg" style="margin-bottom:0"><label style="font-size:9px">Invoices</label><input class="fc" type="number" id="tgt-se-inv-'+se.replace(/ /g,'_')+'" value="'+oi+'" placeholder="—" style="padding:5px 8px;font-size:12px"/></div>'
-            +'</div></div>';
-        }).join('')}
+      <div class="fg">
+        <label>🏎 PG Test Drives</label>
+        <input class="fc" id="tgt-pg-td" type="number" min="0" value="${t?.pg_test_drives||''}" placeholder="e.g. 40"/>
+        <div style="font-size:10px;color:var(--faint);margin-top:3px" id="tgt-pg-td-hint">Per PG: ~${t?.pg_test_drives?Math.ceil(t.pg_test_drives/2):'—'}</div>
       </div>
     </div>
+    <div style="font-size:11px;color:var(--faint);margin-top:8px">Month: <b style="color:var(--white)">${ym}</b> ${t?'— updating existing target':'— creating new target'}</div>
   `,`
     <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
-    <button class="btn btn-red" onclick="doSaveTarget(${month},${year})">🎯 Save Target</button>
+    <button class="btn btn-ghost" style="color:var(--amber);border-color:rgba(245,158,11,.4)" onclick="doSaveTarget('${ym}')">🎯 Save Target</button>
   `);
-}
-
-async function doSaveTarget(month, year){
-  const inv = parseInt(document.getElementById('tgt-inv')?.value)||0;
-  if(!inv){ toast('Please enter invoice target','warn'); return; }
-
-  // Collect SE overrides
-  const seOverrides={}, seInvOverrides={};
-  SE_LIST.forEach(se=>{
-    const key = se.replace(/ /g,'_');
-    const inV = document.getElementById('tgt-se-inv-'+key)?.value;
-    if(inV !== '' && inV !== undefined && !isNaN(parseInt(inV))) seInvOverrides[se] = parseInt(inV);
-  });
-
-  const record = {
-    month, year,
-    showroom_invoices:  inv,
-    se_overrides:       JSON.stringify(seOverrides),
-    se_invoice_overrides: JSON.stringify(seInvOverrides),
-    set_by: curUser,
-    updated_at: new Date().toISOString(),
-  };
-
-  // Upsert by month+year
-  const existing = getCurrentMonthTarget();
-  let error;
-  if(existing){
-    ({error} = await supa.from('sales_targets').update(record).eq('id', existing.id));
-  } else {
-    ({error} = await supa.from('sales_targets').insert([record]));
-  }
-  if(error){ toast('Error: '+error.message,'err'); return; }
-
-  closeM();
-  toast(`🎯 Target saved for ${new Date(year,month-1).toLocaleString('en-AE',{month:'long'})} ${year} ✓`,'ok');
-  await loadAll();
-  goTo('dashboard');
-}
-
-// ══════════════════════════════════════
-// TARGET MANAGEMENT
-// ══════════════════════════════════════
-function openSetTargetModal(){
-  openTargetModal();
+  // Live per-person preview
+  setTimeout(()=>{
+    const inv = document.getElementById('tgt-inv');
+    const pgd = document.getElementById('tgt-pg-del');
+    const pgt = document.getElementById('tgt-pg-td');
+    if(inv) inv.oninput = ()=>{ const h=document.getElementById('tgt-inv-hint'); if(h) h.textContent='Per SE: ~'+(parseInt(inv.value)?Math.ceil(parseInt(inv.value)/6):'—'); };
+    if(pgd) pgd.oninput = ()=>{ const h=document.getElementById('tgt-pg-del-hint'); if(h) h.textContent='Per PG: ~'+(parseInt(pgd.value)?Math.ceil(parseInt(pgd.value)/2):'—'); };
+    if(pgt) pgt.oninput = ()=>{ const h=document.getElementById('tgt-pg-td-hint'); if(h) h.textContent='Per PG: ~'+(parseInt(pgt.value)?Math.ceil(parseInt(pgt.value)/2):'—'); };
+  },100);
 }
 
 async function doSaveTarget(ym){
-  const inv  = parseInt(document.getElementById('tgt-inv')?.value)||0;
-  const pgDel= parseInt(document.getElementById('tgt-pg-del')?.value)||0;
-  const pgTD = parseInt(document.getElementById('tgt-pg-td')?.value)||0;
-  const drDel= parseInt(document.getElementById('tgt-dr-del')?.value)||0;
-  const drTD = parseInt(document.getElementById('tgt-dr-td')?.value)||0;
+  const inv   = parseInt(document.getElementById('tgt-inv')?.value)||0;
+  const pgDel = parseInt(document.getElementById('tgt-pg-del')?.value)||0;
+  const pgTD  = parseInt(document.getElementById('tgt-pg-td')?.value)||0;
   if(!inv && !pgDel && !pgTD){ toast('Please enter at least one target','warn'); return; }
-
   const existing = getActiveTarget();
   const record = {
-    month:             ym,
-    invoices:          inv,
-    pg_deliveries:     pgDel,
-    pg_test_drives:    pgTD,
-    driver_deliveries: drDel,
-    driver_test_drives:drTD,
-    set_by:            curUser,
-    updated_at:        new Date().toISOString(),
+    month:           ym,
+    invoices:        inv,
+    pg_deliveries:   pgDel,
+    pg_test_drives:  pgTD,
+    set_by:          curUser,
+    updated_at:      new Date().toISOString(),
   };
-
   let error;
   if(existing){
     ({error} = await supa.from('targets').update(record).eq('id', existing.id));
   } else {
-    ({error} = await supa.from('targets').insert([{...record, created_at: new Date().toISOString()}]));
+    ({error} = await supa.from('targets').insert([{...record, created_at:new Date().toISOString()}]));
   }
-  if(error){ toast('Error: '+error.message,'err'); return; }
+  if(error){ toast('Save failed: '+error.message,'err'); return; }
   closeM();
-  toast(`Target saved — SE: ${inv} invoices | PG: ${pgDel}del/${pgTD}TD | Driver: ${drDel}del/${drTD}TD ✓`,'ok');
+  toast('Target saved ✓ — '+(inv?inv+' invoices / ':'')+(pgDel?pgDel+' PG deliveries / ':'')+(pgTD?pgTD+' PG test drives':''),'ok');
   await loadAll();
   goTo('dashboard');
 }
+
 
 // ══════════════════════════════════════
 // DB DIAGNOSTIC
