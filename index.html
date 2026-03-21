@@ -1077,20 +1077,24 @@ function initApp(){
   const avEl   = document.getElementById('sb-av');
   if(nameEl) nameEl.textContent = curUser;
   if(roleEl) roleEl.textContent = ROLE_LABEL[curRole] || curRole;
-  const initials = curUser.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const saved = (() => { try{ return JSON.parse(localStorage.getItem('agmc_theme_'+curUser.replace(/\s+/g,'_'))||'null'); }catch(e){return null;} })();
-  const colour = saved ? saved.colour : '#E2001A';
-  if(avEl){ avEl.textContent = initials; avEl.style.background = colour; }
-  setTimeout(initTheme, 50);
-  updateSidebarUser();
+  // Apply saved theme immediately
+  const themeKey = 'agmc_theme_' + curUser.replace(/\s+/g,'_');
+  let savedTheme = null;
+  try { savedTheme = JSON.parse(localStorage.getItem(themeKey)||'null'); } catch(e){}
+  const colour = savedTheme ? savedTheme.colour : '#E2001A';
+  const glow   = savedTheme ? savedTheme.glow   : 'rgba(226,0,26,.15)';
+  // Apply to CSS vars right now
+  document.documentElement.style.setProperty('--red', colour);
+  document.documentElement.style.setProperty('--red-dark', colour);
+  document.documentElement.style.setProperty('--red-glow', glow);
+  // Set avatar
+  const initials = curUser.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+  if(avEl){ avEl.textContent = initials; avEl.style.background = colour; avEl.style.borderColor = colour+'66'; }
   const firstPage = (NAV[curRole]||[])[0]?.p || 'dashboard';
   goTo(firstPage);
   renderNotif();
-  // Update topbar user info
-  const uel = document.getElementById('tb-user');
-  if(uel) uel.textContent = curUser;
-  const rel = document.getElementById('tb-role');
-  if(rel) rel.textContent = (NAV[curRole]||[])[0]?.l ? ({se:'Sales Executive',sa:'Sales Assistance',pg:'Product Genius',admin:'Admin',mg:'Meet & Greet',ss:'Sales Supervisor',driver:'Driver'}[curRole]||curRole) : curRole;
+  setTimeout(renderThemePanel, 100);
+  setTimeout(showWelcomeToast, 800);
 }
 
 function buildNav(){
@@ -3097,7 +3101,7 @@ async function doRaiseFlag(bookingId){
     severity:document.getElementById('fl-sev')?.value||'Medium',
     status:'Open',
     se:b?.se||'',
-    sa:'Nourhan Walid',
+    sa:curUser,
   };
   if(!obj.body){toast('Please describe the issue','warn');return;}
   const {error}=await supa.from('flags').insert([obj]);
@@ -3885,6 +3889,12 @@ async function doLogin(){
     document.getElementById('pin-in').value='';
     setTimeout(()=>showForcedPINChange(u,r),300); return;
   }
+  // Set default theme if first login
+  const _tk = 'agmc_theme_'+u.replace(/\s+/g,'_');
+  if(!localStorage.getItem(_tk)){
+    const _defaults = {'Nourhan Walid':'#ec4899|rgba(236,72,153,.15)|Pink','Rachael Fernandes':'#f59e0b|rgba(245,158,11,.15)|Amber'};
+    if(_defaults[u]){ const [c,g,n]=_defaults[u].split('|'); localStorage.setItem(_tk,JSON.stringify({colour:c,glow:g,name:n})); }
+  }
   const btn=document.getElementById('login-btn');
   btn.disabled=true; btn.textContent='Loading…';
   curRole=r; curUser=u;
@@ -3900,6 +3910,8 @@ async function doLogin(){
 }
 
 function doLogout(){
+  showGoodbyeToast();
+  setTimeout(function(){
   sessionStorage.removeItem('agmc_role'); sessionStorage.removeItem('agmc_user');
   curRole=''; curUser='';
   Object.keys(DB).forEach(k=>DB[k]=[]);
@@ -3908,6 +3920,7 @@ function doLogout(){
   document.getElementById('role-sel').value='';
   document.getElementById('user-sel').innerHTML='<option value="">— Select name —</option>';
   document.getElementById('pin-in').value='';
+  }, 1200);
 }
 
 function showForcedPINChange(userName, userRole){
@@ -5281,6 +5294,16 @@ function toast(msg, type='ok', sub=''){
       await loadAll();
       document.getElementById('login-screen').style.display='none';
       document.getElementById('app').classList.add('on');
+      // Apply saved theme before initApp
+      try {
+        const _rtk = 'agmc_theme_'+savedUser.replace(/\s+/g,'_');
+        const _rt = JSON.parse(localStorage.getItem(_rtk)||'null');
+        if(_rt){
+          document.documentElement.style.setProperty('--red', _rt.colour);
+          document.documentElement.style.setProperty('--red-dark', _rt.colour);
+          document.documentElement.style.setProperty('--red-glow', _rt.glow);
+        }
+      } catch(e){}
       initApp();
     } catch(e){
       sessionStorage.removeItem('agmc_role');
@@ -5323,6 +5346,100 @@ function setupMobileNav(){
       if(window.innerWidth <= 900) setTimeout(closeSidebar, 120);
     });
   });
+}
+
+
+// ══════════════════════════════════════
+// GREETINGS & WELCOME
+// ══════════════════════════════════════
+function getGreeting(){
+  const h = new Date().getHours();
+  if(h >= 5  && h < 12) return 'Good Morning';
+  if(h >= 12 && h < 17) return 'Good Afternoon';
+  if(h >= 17 && h < 21) return 'Good Evening';
+  return 'Good Night';
+}
+
+function getGreetingEmoji(){
+  const h = new Date().getHours();
+  if(h >= 5  && h < 12) return '☀️';
+  if(h >= 12 && h < 17) return '🌤';
+  if(h >= 17 && h < 21) return '🌆';
+  return '🌙';
+}
+
+function showWelcomeToast(){
+  const greeting = getGreeting();
+  const emoji    = getGreetingEmoji();
+  const firstName = curUser.split(' ')[0];
+  toast(emoji + ' ' + greeting + ', ' + firstName + '!', 'ok');
+}
+
+function showGoodbyeToast(){
+  const h = new Date().getHours();
+  const firstName = curUser.split(' ')[0];
+  const msg = h >= 17
+    ? 'Have a great evening, ' + firstName + '! 🌙'
+    : 'See you soon, ' + firstName + '! 👋';
+  toast(msg, 'ok');
+}
+
+// ══════════════════════════════════════
+// THEME & AVATAR SYSTEM
+// ══════════════════════════════════════
+const THEME_OPTS = [
+  {name:'MINI Red',  colour:'#E2001A', glow:'rgba(226,0,26,.15)'},
+  {name:'Pink',      colour:'#ec4899', glow:'rgba(236,72,153,.15)'},
+  {name:'Purple',    colour:'#a855f7', glow:'rgba(168,85,247,.15)'},
+  {name:'Blue',      colour:'#3b82f6', glow:'rgba(59,130,246,.15)'},
+  {name:'Teal',      colour:'#14b8a6', glow:'rgba(20,184,166,.15)'},
+  {name:'Green',     colour:'#22c55e', glow:'rgba(34,197,94,.15)'},
+  {name:'Amber',     colour:'#f59e0b', glow:'rgba(245,158,11,.15)'},
+  {name:'Orange',    colour:'#f97316', glow:'rgba(249,115,22,.15)'},
+];
+
+function getThemeKey(){ return 'agmc_theme_'+curUser.replace(/\s+/g,'_'); }
+function getSavedTheme(){ try{ return JSON.parse(localStorage.getItem(getThemeKey())||'null'); }catch(e){return null;} }
+
+function applyTheme(colour, glow){
+  document.documentElement.style.setProperty('--red', colour);
+  document.documentElement.style.setProperty('--red-dark', colour);
+  document.documentElement.style.setProperty('--red-glow', glow);
+  const av = document.getElementById('sb-av');
+  if(av) av.style.borderColor = colour+'88';
+}
+
+function setTheme(colour, glow, name){
+  localStorage.setItem(getThemeKey(), JSON.stringify({colour,glow,name}));
+  applyTheme(colour, glow);
+  const av = document.getElementById('sb-av');
+  if(av) av.style.background = colour;
+  renderThemePanel();
+  toast('Theme: '+name+' ✓','ok');
+}
+
+function renderThemePanel(){
+  const el = document.getElementById('theme-swatches');
+  if(!el) return;
+  const saved = getSavedTheme();
+  el.innerHTML = THEME_OPTS.map(function(t){
+    const active = saved && saved.colour===t.colour;
+    const border = active ? '3px solid #fff' : '3px solid transparent';
+    const div = document.createElement('div');
+    div.title = t.name;
+    div.style.cssText = 'width:26px;height:26px;border-radius:50%;background:'+t.colour+';cursor:pointer;border:'+border+';transition:all .15s;flex-shrink:0';
+    div.addEventListener('click', (function(c,g,n){ return function(){ setTheme(c,g,n); }; })(t.colour,t.glow,t.name));
+    return div.outerHTML;
+  }).join('');
+  const info = document.getElementById('theme-user-info');
+  if(info) info.innerHTML = '<b style="color:var(--white)">'+curUser+'</b><br/><span style="font-size:10px;color:var(--faint)">'+(ROLE_LABEL[curRole]||curRole)+'</span>';
+}
+
+let _themeOpen = false;
+function toggleThemePanel(){
+  _themeOpen = !_themeOpen;
+  const p = document.getElementById('theme-panel');
+  if(p){ p.classList.toggle('on',_themeOpen); if(_themeOpen) renderThemePanel(); }
 }
 
 // Close notif on outside click
