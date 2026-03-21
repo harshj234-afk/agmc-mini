@@ -228,10 +228,12 @@ textarea.fc{resize:vertical;min-height:70px;}
 .roster td:last-child,.roster th:last-child{border-right:none;}
 .roster tr:last-child td{border-bottom:none;}
 .roster tr:hover td{background:var(--surface2);}
-.ron{background:rgba(34,197,94,.08);color:var(--green);font-weight:700;font-size:11px;}
-.roff{color:var(--faint);font-size:11px;}
-.ram{background:rgba(59,130,246,.08);color:var(--blue);font-weight:700;font-size:11px;}
-.rpm{background:rgba(245,158,11,.08);color:var(--amber);font-weight:700;font-size:11px;}
+.r96{background:rgba(34,197,94,.1);color:var(--green);font-weight:700;font-size:10px;}
+.r107{background:rgba(52,211,153,.1);color:#34d399;font-weight:700;font-size:10px;}
+.r118{background:rgba(245,158,11,.1);color:var(--amber);font-weight:700;font-size:10px;}
+.roff{color:var(--faint);font-size:10px;}
+.rco{background:rgba(248,113,113,.1);color:#f87171;font-weight:700;font-size:10px;}
+.ral,.rsl,.rel{background:rgba(167,139,250,.1);color:#a78bfa;font-weight:700;font-size:10px;}
 
 /* CALENDAR */
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
@@ -977,23 +979,23 @@ const DEAL_STAGES = ['Finance Pending','Finance Approved','LPO Received','LOI Re
 const COLORS = ['Pepper White','Midnight Black','British Racing Green','Chili Red','Rooftop Grey','Island Blue','Zesty Yellow','Sage Green','Nanuq White'];
 const SOURCES = ['Walk-In','Phone','Website','Referral','Social Media','Event','Email'];
 const ROSTER_DATA = [
-  {name:'Ahmed Darwish',role:'SE',days:['ON','ON','ON','ON','OFF','ON','OFF']},
-  {name:'Chadi Akl',role:'SE',days:['ON','ON','OFF','ON','ON','ON','OFF']},
-  {name:'Derrick Ferrao',role:'SE',days:['AM','AM','PM','PM','ON','OFF','OFF']},
-  {name:'Harsh Jain',role:'SE/Admin',days:['ON','OFF','ON','ON','ON','ON','OFF']},
-  {name:'Mohamed Aboelella',role:'SE',days:['ON','ON','ON','OFF','ON','PM','OFF']},
-  {name:'Nurgiza Shamshibekova',role:'SE',days:['OFF','ON','ON','ON','ON','AM','OFF']},
-  {name:'Nourhan Walid',role:'SA',days:['ON','ON','ON','ON','ON','OFF','OFF']},
-  {name:'Francis de Castro Escueta',role:'SA',days:['ON','OFF','ON','ON','ON','ON','OFF']},
-  {name:'Faizan Asim',role:'PG',days:['AM','PM','ON','ON','OFF','ON','OFF']},
-  {name:'Ege Andac',role:'PG',days:['ON','ON','AM','PM','ON','OFF','OFF']},
-  {name:'Rachael Fernandes',role:'Admin',days:['ON','ON','ON','ON','ON','OFF','OFF']},
-  {name:'Maham Jawed',role:'M&G',days:['ON','ON','ON','OFF','ON','ON','OFF']},
-  {name:'Khawla Saleh',role:'M&G',days:['OFF','ON','ON','ON','PM','AM','OFF']},
-  {name:'Khouloud Zaidi',role:'M&G',days:['ON','OFF','ON','ON','ON','OFF','OFF']},
-  {name:'Abdul Baseth',role:'SS',days:['ON','ON','ON','ON','ON','OFF','OFF']},
-  {name:'Zain',          role:'Driver',days:['ON','ON','ON','ON','ON','OFF','OFF']},
-  {name:'Rahul',         role:'Driver',days:['ON','ON','ON','ON','ON','OFF','OFF']},
+  {name:'Ahmed Darwish',role:'SE',days:['9-6','9-6','9-6','9-6','OFF','9-6','OFF']},
+  {name:'Chadi Akl',role:'SE',days:['9-6','9-6','OFF','9-6','9-6','9-6','OFF']},
+  {name:'Derrick Ferrao',role:'SE',days:['9-6','9-6','11-8','11-8','9-6','OFF','OFF']},
+  {name:'Harsh Jain',role:'SE/Admin',days:['9-6','OFF','9-6','9-6','9-6','9-6','OFF']},
+  {name:'Mohamed Aboelella',role:'SE',days:['9-6','9-6','9-6','OFF','9-6','11-8','OFF']},
+  {name:'Nurgiza Shamshibekova',role:'SE',days:['OFF','9-6','9-6','9-6','9-6','9-6','OFF']},
+  {name:'Nourhan Walid',role:'SA',days:['9-6','9-6','9-6','9-6','9-6','OFF','OFF']},
+  {name:'Francis de Castro Escueta',role:'SA',days:['9-6','OFF','9-6','9-6','9-6','9-6','OFF']},
+  {name:'Faizan Asim',role:'PG',days:['9-6','11-8','9-6','9-6','OFF','9-6','OFF']},
+  {name:'Ege Andac',role:'PG',days:['9-6','9-6','9-6','11-8','9-6','OFF','OFF']},
+  {name:'Rachael Fernandes',role:'Admin',days:['9-6','9-6','9-6','9-6','9-6','OFF','OFF']},
+  {name:'Maham Jawed',role:'M&G',days:['9-6','9-6','9-6','OFF','9-6','9-6','OFF']},
+  {name:'Khawla Saleh',role:'M&G',days:['OFF','9-6','9-6','9-6','11-8','9-6','OFF']},
+  {name:'Khouloud Zaidi',role:'M&G',days:['9-6','OFF','9-6','9-6','9-6','OFF','OFF']},
+  {name:'Abdul Baseth',role:'SS',days:['9-6','9-6','9-6','9-6','9-6','OFF','OFF']},
+  {name:'Zain',          role:'Driver',days:['9-6','9-6','9-6','9-6','9-6','OFF','OFF']},
+  {name:'Rahul',         role:'Driver',days:['9-6','9-6','9-6','9-6','9-6','OFF','OFF']},
 ];
 
 // ══════════════════════════════════════
@@ -1616,7 +1618,7 @@ function rosterWidget(name){
   const r = ROSTER_DATA.find(x=>x.name===name);
   if(!r) return '';
   const todayStatus = r.days[todayIdx];
-  const sc = s => s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
+  const sc = s => s==='9-6'?'var(--green)':s==='10-7'?'#34d399':s==='11-8'?'var(--amber)':s==='OFF'?'var(--red)':s==='CO'?'#f87171':s==='AL'||s==='SL'||s==='EL'?'#a78bfa':'var(--dim)';
   return `<div class="card" style="margin-top:14px">
     <div class="ch">
       <div class="ct" style="font-size:13px">🗓 My Schedule</div>
@@ -1748,7 +1750,7 @@ dashboard(){
             ${DAYS.map((d,i)=>{
               const st=myRoster.days[i];
               const isToday=i===todayIdx;
-              const c=st==='ON'?'var(--green)':st==='OFF'?'var(--red)':st==='AM'||st==='PM'?'var(--amber)':'var(--dim)';
+              const c=st==='9-6'?'var(--green)':st==='10-7'?'#34d399':st==='11-8'?'var(--amber)':st==='OFF'?'var(--red)':st==='CO'?'#f87171':st==='AL'||st==='SL'||st==='EL'?'#a78bfa':'var(--dim)';
               return '<div style="background:var(--surface2);border-radius:6px;padding:5px 2px;'+(isToday?'outline:2px solid var(--red);':'')+'"><div style="font-size:8px;color:var(--faint);text-transform:uppercase;margin-bottom:2px">'+d+'</div><div style="font-size:11px;font-weight:700;color:'+c+'">'+st+'</div></div>';
             }).join('')}
           </div>` : `<div style="font-size:12px;color:var(--faint);padding:10px">Not in roster</div>`}
@@ -2027,7 +2029,7 @@ dashboard(){
     const upcomingDels = DB.deliveries.filter(d=>d.delivery_date>=today&&d.status!=='Delivered').slice(0,10);
     const flowerDels = upcomingDels.filter(d=>{const bk=DB.bookings.find(b=>b.id===d.booking_id);return bk?.flowers;});
     const avDemos = DB.demo.filter(d=>d.status==='Available').length;
-    const cls={ON:'ron',OFF:'roff',AM:'ram',PM:'rpm'};
+    const cls={'9-6':'r96','10-7':'r107','11-8':'r118','OFF':'roff','CO':'rco','AL':'ral','SL':'rsl','EL':'rel'};
     return `
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
       <div>
@@ -2174,7 +2176,7 @@ dashboard(){
   const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const todayIdx2 = new Date().getDay();
   const myR = ROSTER_DATA.find(r=>r.name===curUser);
-  const sc = s=>s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
+  const sc = s=>s==='9-6'?'var(--green)':s==='10-7'?'#34d399':s==='11-8'?'var(--amber)':s==='OFF'?'var(--red)':s==='CO'?'#f87171':s==='AL'||s==='SL'||s==='EL'?'#a78bfa':'var(--dim)';
 
   if(curRole==='ss') return `
   <!-- Header -->
@@ -2367,7 +2369,7 @@ dashboard(){
   const DAYS_A=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const todayIdxA=new Date().getDay();
   const myRA=ROSTER_DATA.find(r=>r.name===curUser);
-  const scA=s=>s==='ON'?'var(--green)':s==='OFF'?'var(--red)':s==='AM'||s==='PM'?'var(--amber)':'var(--dim)';
+  const scA=s=>s==='9-6'?'var(--green)':s==='10-7'?'#34d399':s==='11-8'?'var(--amber)':s==='OFF'?'var(--red)':s==='CO'?'#f87171':s==='AL'||s==='SL'||s==='EL'?'#a78bfa':'var(--dim)';
   const stageColorsA={'Delivered':'var(--green)','Invoiced':'var(--amber)','Registered':'#a855f7','Ready for Delivery':'#22d3ee','Insured':'#60a5fa'};
 
   return `
@@ -2682,7 +2684,7 @@ upload(){
 roster(){
   const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const todayDow = new Date().getDay();
-  const cls={ON:'ron',OFF:'roff',AM:'ram',PM:'rpm'};
+  const cls={'9-6':'r96','10-7':'r107','11-8':'r118','OFF':'roff','CO':'rco','AL':'ral','SL':'rsl','EL':'rel'};
   const canEdit = ['admin','ss','sa'].includes(curRole);
   const STATUS_OPTS = ['ON','OFF','AM','PM'];
   return `
