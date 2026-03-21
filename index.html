@@ -2699,7 +2699,8 @@ roster(){
   const monthLabel   = new Date(selY, selM-1, 1).toLocaleString('en-AE',{month:'long',year:'numeric'});
   const today        = now.toISOString().split('T')[0];
   const cls          = {'9-6':'r96','10-7':'r107','11-8':'r118','OFF':'roff','CO':'rco','AL':'ral','SL':'rsl','EL':'rel'};
-  const canEdit      = ['admin'].includes(curRole);
+  const canEdit      = ['admin','ss'].includes(curRole);
+  const canView      = ['admin','ss','sa','se','pg','mg','driver'].includes(curRole);
   const STATUS_OPTS  = ['9-6','10-7','11-8','OFF','CO','AL','SL','EL'];
 
   // Build day headers — date number + day abbreviation
@@ -2736,7 +2737,16 @@ roster(){
         <button class="btn btn-ghost btn-sm" onclick="rosterNav(1)">Next →</button>
       </div>
       ${canEdit?`<button class="btn btn-red btn-sm" onclick="saveMonthRoster('${selYM}')">💾 Save Month</button>`:''}
+      ${!canEdit?`<span class="badge bgr" style="font-size:10px">👁 View Only</span>`:''}
     </div>
+  </div>
+
+  <!-- Role filter tabs -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+    ${['All','SE','SA','PG','M&G','Admin','SS','Driver'].map(r=>{
+      const active = (window._rosterRoleFilter||'All')===r;
+      return '<button class="btn '+(active?'btn-red':'btn-ghost')+' btn-sm" onclick="window._rosterRoleFilter=\''+r+'\';goTo(\'roster\')">'+ r +'</button>';
+    }).join('')}
   </div>
 
   <div class="card" style="overflow-x:auto;padding:0">
@@ -2747,7 +2757,7 @@ roster(){
         ${dayHeaders.map(({dn,dow,isT,isFri})=>`<th style="text-align:center;min-width:38px;padding:4px 2px;${isT?'color:var(--red);font-weight:800':isFri?'color:var(--amber);opacity:.7':''}">${dn}<br/><span style="font-size:8px;opacity:.6">${dow}</span></th>`).join('')}
       </tr></thead>
       <tbody>
-        ${ROSTER_DATA.map((p,pi)=>{
+        ${ROSTER_DATA.filter(p=>{ const f=window._rosterRoleFilter||'All'; return f==='All'||p.role===f||(f==='SE'&&p.role==='SE/Admin'); }).map((p,pi)=>{
           const days = mRoster[p.name] || Array(daysInMonth).fill('OFF');
           return `<tr>
             <td style="text-align:left;padding:5px 14px;font-weight:600;color:var(--white);font-size:12px;position:sticky;left:0;background:var(--surface);z-index:1">${p.name}</td>
@@ -4732,22 +4742,28 @@ function onMonthRosterChange(sel){
 async function saveMonthRoster(ym){
   const mRoster = window._monthRoster?.[ym];
   if(!mRoster){ toast('Nothing to save','warn'); return; }
-  const records = ROSTER_DATA.map(p=>({
-    name:      p.name,
-    role:      p.role,
-    month:     ym,
-    days:      JSON.stringify(mRoster[p.name] || p.days),
-    updated_by:curUser,
-    updated_at:new Date().toISOString(),
-  }));
-  let saved=0, failed=0;
-  for(const r of records){
-    const {error} = await supa.from('roster').upsert([r], {onConflict:'name,month'});
-    if(error){ failed++; console.warn('Roster save error:', r.name, error.message); }
-    else saved++;
+  const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  const daysInMo = new Date(parseInt(ym.split('-')[0]), parseInt(ym.split('-')[1]), 0).getDate();
+  let saved=0, failed=0, lastErr='';
+
+  for(const p of ROSTER_DATA){
+    const days = mRoster[p.name] || Array.from({length:daysInMo},(_,i)=>p.days[i%7]);
+    const rec = { name:p.name, role:p.role, month:ym, days:JSON.stringify(days), updated_by:curUser, updated_at:new Date().toISOString() };
+    // Try composite key upsert first (new schema)
+    const {error:e1} = await supa.from('roster').upsert([rec], {onConflict:'name,month'});
+    if(e1){
+      // Fallback to name-only (old schema without month column)
+      const {error:e2} = await supa.from('roster').upsert(
+        [{name:p.name,role:p.role,days:rec.days,updated_by:curUser,updated_at:rec.updated_at}],
+        {onConflict:'name'}
+      );
+      if(e2){ failed++; lastErr=e2.message; }
+      else saved++;
+    } else { saved++; }
   }
-  if(failed>0) toast(`Saved ${saved}, failed ${failed}`, 'warn');
-  else toast(`Roster saved ✓ — ${ym}`, 'ok');
+
+  if(failed>0) toast('Saved '+saved+'/'+ROSTER_DATA.length+' — '+failed+' failed. Run SQL migration.','warn');
+  else toast('Roster saved ✓ — '+monthLabel+' ('+saved+' members)','ok');
 }
 
 async function loadRosterFromDB(){
