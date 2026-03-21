@@ -4952,6 +4952,14 @@ function doSaveRoster_local(){}
 // ══════════════════════════════════════
 // INVOICE UPLOAD
 // ══════════════════════════════════════
+function clearInvUpload(){
+  const p=document.getElementById('inv-preview');
+  const f=document.getElementById('inv-file');
+  if(p) p.innerHTML='';
+  if(f) f.value='';
+  window._invRows=null; window._invCols=null;
+}
+
 function setBulkSA(sa){
   document.querySelectorAll('.inv-sa-row').forEach(sel => sel.value = sa);
 }
@@ -4999,249 +5007,200 @@ function showInvPreview(rows, filename){
   const cols   = Object.keys(sample);
   const findCol = (...names) => names.find(n => cols.find(c => c.toLowerCase().includes(n.toLowerCase())));
   const colVIN   = findCol('vin','chassis');
-  const colInvNo = findCol('invoice number','invoice no','inv no','invoice#','document number','doc no');
-  const colInvDt = findCol('invoice date','date','inv date','document date');
+  const colInvNo = findCol('invoice number','invoice no','inv no','document number','doc no');
+  const colInvDt = findCol('invoice date','inv date','document date','date');
   const colCust  = findCol('customer','client','buyer');
-  const colVSB   = findCol('vsb','vsb no','vsb number');
+  const colVSB   = findCol('vsb');
   const colAmt   = findCol('amount','value','total','price');
   const colSE    = findCol('sales exec','se name','salesperson','user');
   const colModel = findCol('vehicle desc','vehicle description','model','car');
+
   window._invCols = {colVIN,colInvNo,colInvDt,colCust,colVSB,colAmt,colSE,colModel};
-
-  const missingCols = [];
-  if(!colVIN)   missingCols.push('VIN');
-  if(!colInvNo) missingCols.push('Invoice Number');
-  if(!colInvDt) missingCols.push('Invoice Date');
-
-  const vinRows    = rows.filter(r => r[colVIN]?.toString().trim());
-  const matched    = vinRows.filter(r => DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
-  const unmatched  = vinRows.filter(r => !DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
-  // Check for duplicate invoice records (same invoice_no already in DB)
-  const alreadyInv = matched.filter(r => {
-    const invNo = r[colInvNo]?.toString().trim();
-    return invNo && (DB.invoices||[]).find(i=>i.invoice_no===invNo);
-  });
-  const toUpdate   = matched.length - alreadyInv.length;
-  const toCreate   = unmatched.length; // will create new booking + invoice
-  const toImport   = toUpdate + toCreate;
-
   window._invRows = rows;
 
+  const missing = [];
+  if(!colVIN)   missing.push('VIN');
+  if(!colInvNo) missing.push('Invoice Number');
+
+  const vinRows   = rows.filter(r => r[colVIN]?.toString().trim());
+  const noVin     = rows.length - vinRows.length;
+  const matched   = vinRows.filter(r => DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
+  const unmatched = vinRows.filter(r => !DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
+
+  const SA_LIST = ['Nourhan Walid','Francis de Castro Escueta'];
+
+  const tableRows = vinRows.map((r,i) => {
+    const vin  = r[colVIN]?.toString().trim()||'';
+    const invNo= r[colInvNo]?.toString().trim()||'—';
+    const cust = r[colCust]?.toString().trim()||'—';
+    const se   = r[colSE]?.toString().trim()||'—';
+    const bk   = DB.bookings.find(b=>b.vin&&b.vin.trim()===vin);
+    const badge= bk ? '<span class="badge bg" style="font-size:9px">Match</span>'
+                    : '<span class="badge bb" style="font-size:9px">New</span>';
+    return '<tr>'
+      +'<td style="font-size:10px;font-family:monospace">'+vin+'</td>'
+      +'<td class="tb" style="font-size:11px">'+cust+'</td>'
+      +'<td style="font-size:10px">'+invNo+'</td>'
+      +'<td style="font-size:10px">'+se+'</td>'
+      +'<td>'+badge+'</td>'
+      +'<td><select class="fc inv-sa-row" data-idx="'+i+'" style="font-size:10px;padding:3px 6px;min-width:130px">'
+        +'<option value="">— None —</option>'
+        +SA_LIST.map(sa=>'<option value="'+sa+'">'+sa.split(' ')[0]+'</option>').join('')
+        +'<option value="both">Both SAs</option>'
+      +'</select></td>'
+    +'</tr>';
+  }).join('');
+
   const preview = document.getElementById('inv-preview');
-  preview.innerHTML = `
-    <div class="up-preview" style="margin-top:12px">
-      <div class="up-prev-head">
-        <div>
-          <div class="up-prev-title">📄 ${filename}</div>
-          <div class="up-prev-sub">${rows.length} invoice rows · ${toImport} will be imported</div>
-        </div>
-        <span class="badge ${missingCols.length?'br':'bg'}">${missingCols.length?'Check columns':'Ready'}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px;background:var(--surface2)">
-        <div style="text-align:center">
-          <div style="font-size:22px;font-weight:800;color:var(--green)">${toUpdate}</div>
-          <div style="font-size:10px;color:var(--faint)">Bookings → Invoiced</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:22px;font-weight:800;color:var(--blue)">${toCreate}</div>
-          <div style="font-size:10px;color:var(--faint)">New + Invoiced</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:22px;font-weight:800;color:var(--amber)">${alreadyInv.length}</div>
-          <div style="font-size:10px;color:var(--faint)">Already done</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:22px;font-weight:800;color:var(--faint)">${rows.length - vinRows.length}</div>
-          <div style="font-size:10px;color:var(--faint)">No VIN in row</div>
-        </div>
-      </div>
-      ${missingCols.length?`<div class="up-err">⚠️ Missing: ${missingCols.join(', ')}</div>`:''}
+  preview.innerHTML = '<div class="up-preview" style="margin-top:12px">'
+    +'<div class="up-prev-head"><div>'
+      +'<div class="up-prev-title">📄 '+filename+'</div>'
+      +'<div class="up-prev-sub">'+rows.length+' rows · '+vinRows.length+' with VIN · '+matched.length+' matched · '+unmatched.length+' new</div>'
+    +'</div>'
+    +'<span class="badge '+(missing.length?'br':'bg')+'">'+(missing.length?'Missing: '+missing.join(', '):'Ready')+'</span></div>'
 
-      <!-- SA Credit Assignment -->
-      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--surface)">
-        <div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">👤 Assign Processing Credit to SA</div>
-        <div style="font-size:11px;color:var(--faint);margin-bottom:10px">Who processed these invoices? This credits them in their Work Log.</div>
-        <select class="fc" id="inv-sa-assign" style="max-width:280px">
-          <option value="">— Select Sales Assistant —</option>
-          ${['Nourhan Walid','Francis de Castro Escueta'].map(sa=>`<option value="${sa}">${sa}</option>`).join('')}
-        </select>
-      </div>
+    // Summary strip
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;background:var(--surface2)">'
+      +'<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--green)">'+matched.length+'</div><div style="font-size:9px;color:var(--faint)">Will Update</div></div>'
+      +'<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--blue)">'+unmatched.length+'</div><div style="font-size:9px;color:var(--faint)">Will Create</div></div>'
+      +'<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--faint)">'+noVin+'</div><div style="font-size:9px;color:var(--faint)">No VIN (skip)</div></div>'
+    +'</div>'
 
-      ${toImport>0?`<div class="up-ok">✅ ${toUpdate} bookings to invoice + ${toCreate} new bookings to create</div>`:`<div class="up-err">All invoice numbers already exist in the system</div>`}
-      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"><div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">Assign SA Credit</div><select id="inv-sa-credit" class="fc" style="width:220px;font-size:12px"><option value="">Assign to SA (optional)</option><option value="Nourhan Walid">Nourhan Walid</option><option value="Francis de Castro Escueta">Francis de Castro Escueta</option></select><div style="font-size:10px;color:var(--faint);margin-top:5px">SA gets credit for processing these invoices</div></div>
-      <div class="up-actions">
-        <span class="up-count">${rows.length} rows · matched by VIN</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-preview').innerHTML='';document.getElementById('inv-file').value=''">✕ Clear</button>
-          <button class="btn btn-sm" style="background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.4)"
-            ${missingCols.length||toImport===0?'disabled style="opacity:.4"':''}
-            onclick="doImportInvoices()">
-            🧾 Import ${toImport} Invoices
-          </button>
-        </div>
-      </div>
-    </div>`;
+    // Bulk assign
+    +'<div style="padding:8px 16px;display:flex;align-items:center;gap:10px;background:var(--surface);border-top:1px solid var(--border)">'
+      +'<span style="font-size:11px;color:var(--faint);white-space:nowrap">Assign all to:</span>'
+      +'<select class="fc" id="inv-sa-bulk" style="font-size:11px;padding:4px 8px;width:180px" onchange="setBulkSA(this.value)">'
+        +'<option value="">— Bulk assign —</option>'
+        +SA_LIST.map(sa=>'<option value="'+sa+'">'+sa.split(' ')[0]+'</option>').join('')
+        +'<option value="both">Both SAs</option>'
+      +'</select>'
+      +'<span style="font-size:10px;color:var(--faint)">or set per row below</span>'
+    +'</div>'
+
+    // Per-row table
+    +'<div style="overflow-x:auto;max-height:320px;overflow-y:auto">'
+      +'<table class="tbl" style="font-size:11px">'
+        +'<thead><tr><th>VIN</th><th>Customer</th><th>Invoice No</th><th>SE</th><th>Status</th><th>SA Credit</th></tr></thead>'
+        +'<tbody>'+tableRows+'</tbody>'
+      +'</table>'
+    +'</div>'
+
+    // Actions
+    +'<div class="up-actions">'
+      +'<span class="up-count">'+vinRows.length+' invoices ready to import</span>'
+      +'<div style="display:flex;gap:8px">'
+        +'<button class="btn btn-ghost btn-sm" onclick="clearInvUpload()">✕ Clear</button>'
+        +'<button class="btn btn-sm" style="background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.4)" onclick="doImportInvoices()">🧾 Import '+vinRows.length+' Invoices</button>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
 }
 
+function clearInvUpload(){
+  const p=document.getElementById('inv-preview');
+  const f=document.getElementById('inv-file');
+  if(p) p.innerHTML='';
+  if(f) f.value='';
+  window._invRows=null; window._invCols=null;
+}
+
+function setBulkSA(sa){
+  document.querySelectorAll('.inv-sa-row').forEach(sel => { sel.value = sa; });
+}
 
 async function doImportInvoices(){
-  const rows   = window._invRows;
-  const c      = window._invCols;
-  // Read per-row SA assignments from the preview table
-  const saRowEls = document.querySelectorAll('.inv-sa-row');
-  const saPerRow = {};
-  saRowEls.forEach(el => { saPerRow[el.dataset.idx] = el.value || ''; });
-  // Fallback bulk assign
-  const saBulk = document.getElementById('inv-sa-bulk')?.value || '';
+  const rows = window._invRows;
+  const c    = window._invCols;
   if(!rows || !c){ toast('No file loaded','warn'); return; }
 
-  let invoiced=0, created=0, skipped=0, failed=0;
-  const now = new Date().toISOString();
-  const today = now.split('T')[0];
+  // Read per-row SA assignments
+  const saRowEls = document.querySelectorAll('.inv-sa-row');
+  const saPerRow = {};
+  saRowEls.forEach(el => { saPerRow[parseInt(el.dataset.idx)] = el.value||''; });
+  const saBulk = document.getElementById('inv-sa-bulk')?.value||'';
 
-  let rowIdx = 0;
+  let created=0, updated=0, failed=0;
+  const now   = new Date().toISOString();
+  const today = now.split('T')[0];
+  let rowIdx  = -1;
+
   for(const r of rows){
     const vin = r[c.colVIN]?.toString().trim();
     if(!vin){ rowIdx++; continue; }
-    const saCredit = saPerRow[rowIdx] || saBulk || '';
     rowIdx++;
+    const saCredit = saPerRow[rowIdx] !== undefined ? saPerRow[rowIdx] : saBulk;
+    const saValue  = saCredit==='both' ? 'Nourhan Walid,Francis de Castro Escueta' : saCredit||null;
 
-    const invNo  = r[c.colInvNo]?.toString().trim() || ('INV-'+Date.now());
+    const invNo  = r[c.colInvNo]?.toString().trim() || ('INV-'+vin.slice(-6));
     const invDt  = (()=>{
       const raw = r[c.colInvDt]?.toString().trim()||'';
       if(!raw) return today;
-      if(!isNaN(raw)&&Number(raw)>40000){
-        const d=new Date(Math.round((Number(raw)-25569)*86400*1000));
-        return d.toISOString().split('T')[0];
-      }
-      const parts=raw.split(/[\/\-]/);
-      if(parts.length===3){
-        const[a,b2,cc]=parts;
-        if(cc.length===4) return cc+'-'+b2.padStart(2,'0')+'-'+a.padStart(2,'0');
-        if(a.length===4)  return a+'-'+b2.padStart(2,'0')+'-'+cc.padStart(2,'0');
-      }
+      if(!isNaN(raw)&&Number(raw)>40000){ const d=new Date(Math.round((Number(raw)-25569)*86400*1000)); return d.toISOString().split('T')[0]; }
+      const p=raw.split(/[\/\-]/);
+      if(p.length===3){ if(p[2].length===4) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0'); if(p[0].length===4) return p[0]+'-'+p[1].padStart(2,'0')+'-'+p[2].padStart(2,'0'); }
       return raw;
     })();
 
-    const customer = r[c.colCust]?.toString().trim() || 'Unknown';
-    const model    = r[c.colModel||'']?.toString().trim() || r['Vehicle Description']?.toString().trim() || '—';
-    const seRaw    = r[c.colSE]?.toString().trim() || '';
-    const vsb      = r[c.colVSB]?.toString().trim() || '';
-    const amt      = r[c.colAmt] ? parseFloat(r[c.colAmt].toString().replace(/[^0-9.]/g,''))||null : null;
+    const customer = r[c.colCust]?.toString().trim()||'Unknown';
+    const model    = r[c.colModel]?.toString().trim()||r['Vehicle Description']?.toString().trim()||'—';
+    const seRaw    = r[c.colSE]?.toString().trim()||'';
+    const vsb      = r[c.colVSB]?.toString().trim()||'';
+    const VALID_SES=['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
+    const se = VALID_SES.find(s=>s.toLowerCase().includes(seRaw.toLowerCase().split(' ')[0]))||seRaw||'Unassigned';
 
-    // Map SE name to valid SE
-    const VALID_SES = ['Ahmed Darwish','Chadi Akl','Derrick Ferrao','Harsh Jain','Mohamed Aboelella','Nurgiza Shamshibekova'];
-    const se = VALID_SES.find(s=>s.toLowerCase().includes(seRaw.toLowerCase().split(' ')[0])) || seRaw || 'Unassigned';
-
-    // ── Find existing booking by VIN ──
-    let bk = DB.bookings.find(b => b.vin && b.vin.trim()===vin);
-
-    // ── If no booking found — CREATE it from invoice data ──
+    // Find or create booking
+    let bk = DB.bookings.find(b=>b.vin&&b.vin.trim()===vin);
     if(!bk){
-      const newBkId = 'BK-'+vin.slice(-6).toUpperCase();
-      const newBk = {
-        id:            newBkId,
-        customer,
-        model,
-        color:         null,
-        vin,
-        vsb_no:        vsb || null,
-        se,
-        date:          invDt,
-        deal:          'Invoiced',
-        pdi:           0,
-        tinting:       'None',
-        ceramic:       false,
-        delivery:      null,
-        delivery_time: '11:00 AM',
-        pg_assigned:   null,
-        flowers:       false,
-        notes:         'Auto-created from invoice upload',
-        created_at:    now,
-      };
-      const {error: bkErr} = await supa.from('bookings').insert([newBk]);
-      if(bkErr){
-        // Try with just essential fields if some columns missing
-        const minBk = {id:newBkId, customer, model, vin, se, date:invDt, deal:'Invoiced', pdi:0};
-        const {error: bkErr2} = await supa.from('bookings').insert([minBk]);
-        if(bkErr2){ failed++; console.error('Booking create failed:', bkErr2.message); continue; }
+      const newId = 'BK-'+vin.slice(-6).toUpperCase();
+      const {error:be} = await supa.from('bookings').insert([{
+        id:newId, customer, model, vin, vsb_no:vsb||null, se,
+        date:invDt, deal:'Invoiced', pdi:0, tinting:'None',
+        ceramic:false, flowers:false, notes:'Auto-created from invoice upload',
+        created_at:now
+      }]);
+      if(be){
+        const {error:be2}=await supa.from('bookings').insert([{id:newId,customer,model,vin,se,date:invDt,deal:'Invoiced',pdi:0}]);
+        if(be2){ failed++; continue; }
       }
-      bk = {id: newBkId, customer, model, vin, se};
-      created++;
-    } else {
-      // Existing booking — update deal to Invoiced if not already
-      if(bk.deal!=='Invoiced'&&bk.deal!=='Delivered'){
-        await supa.from('bookings').update({deal:'Invoiced'}).eq('id', bk.id);
-      }
-      invoiced++;
+      bk={id:newId,customer,model,vin,se};
+    } else if(bk.deal!=='Invoiced'&&bk.deal!=='Delivered'){
+      await supa.from('bookings').update({deal:'Invoiced'}).eq('id',bk.id);
     }
 
-    // ── Create invoice record ──
-    const _oldExistingInv = (DB.invoices||[]).find(i=>i.invoice_no===invNo || (i.vin===vin && i.booking_id===bk.id));
-    if(existingInv){ skipped++; continue; }
-    const invRecord = {
-      booking_id:         bk.id,
-      invoice_no:         invNo,
-      invoice_date:       invDt,
-      customer:           customer,
-      model:              bk.model || model,
-      model_year:         bk.model_year || null,
-      color:              bk.color || null,
-      vin,
-      vsb_no:             vsb || bk.vsb_no || null,
-      se:                 se,
-      created_by:         curUser,
-      sa_processed_by:    (saCredit==='both'?'Nourhan Walid,Francis de Castro Escueta':saCredit) || null,
-      created_at:         now,
-      delivery_scheduled: false,
-      registration_id:    null,
+    // Upsert invoice
+    const existingInv = (DB.invoices||[]).find(i=>i.invoice_no===invNo||i.booking_id===bk.id);
+    const invRec = {
+      booking_id:bk.id, invoice_no:invNo, invoice_date:invDt,
+      customer:bk.customer||customer, model:bk.model||model,
+      model_year:bk.model_year||null, color:bk.color||null,
+      vin, vsb_no:vsb||bk.vsb_no||null, se,
+      created_by:curUser, sa_processed_by:saValue,
+      created_at:now, delivery_scheduled:false, registration_id:null,
     };
-
-    // Always upsert — insert or update by invoice_no
-    const existingInv = (DB.invoices||[]).find(i => i.invoice_no===invNo);
     if(existingInv){
       await supa.from('invoices').update({
-        invoice_date:    invRecord.invoice_date,
-        customer:        invRecord.customer,
-        model:           invRecord.model,
-        vin:             invRecord.vin,
-        vsb_no:          invRecord.vsb_no,
-        se:              invRecord.se,
-        sa_processed_by: invRecord.sa_processed_by,
-      }).eq('id', existingInv.id);
+        invoice_date:invRec.invoice_date, customer:invRec.customer,
+        model:invRec.model, se:invRec.se, sa_processed_by:invRec.sa_processed_by,
+      }).eq('id',existingInv.id);
+      updated++;
     } else {
-      const {error: invErr} = await supa.from('invoices').insert([invRecord]);
-      if(invErr){
-        // Fallback minimal insert
+      const {error:ie}=await supa.from('invoices').insert([invRec]);
+      if(ie){
         await supa.from('invoices').insert([{
-          booking_id: invRecord.booking_id, invoice_no: invRecord.invoice_no,
-          invoice_date: invRecord.invoice_date, customer: invRecord.customer,
-          model: invRecord.model, vin: invRecord.vin, se: invRecord.se,
-          created_by: invRecord.created_by, created_at: invRecord.created_at,
-          delivery_scheduled: false, registration_id: null,
+          booking_id:invRec.booking_id, invoice_no:invRec.invoice_no,
+          invoice_date:invRec.invoice_date, customer:invRec.customer,
+          model:invRec.model, vin:invRec.vin, se:invRec.se,
+          created_by:invRec.created_by, created_at:invRec.created_at,
+          delivery_scheduled:false, registration_id:null,
         }]);
       }
+      created++;
     }
-
-    // Notify SE
-    await supa.from('notifications').insert([{
-      title: '🧾 Invoiced — '+bk.id,
-      body:  customer+' — '+model+' ('+invNo+')',
-      type:  'deal', target_role:'se', read:false, booking_id:bk.id
-    }]);
   }
 
-  const total = invoiced + created;
-  const msg = [
-    created  ? created+' new bookings created & invoiced' : '',
-    invoiced ? invoiced+' existing bookings invoiced'     : '',
-    skipped  ? skipped+' already invoiced (skipped)'      : '',
-    failed   ? failed+' failed'                           : '',
-    saCredit ? 'credited to '+saCredit.split(' ')[0]      : '',
-  ].filter(Boolean).join(' · ');
-
-  addUploadHistory('invoices','Invoice Upload', total, msg);
-  toast('Invoice import — '+msg, total?'ok':'warn');
+  const total=created+updated;
+  addUploadHistory('invoices','Invoice Upload',total,created+' new · '+updated+' updated'+(failed?' · '+failed+' failed':''));
+  toast('Invoice import done — '+created+' new, '+updated+' updated'+(failed?' · '+failed+' failed':''),total?'ok':'warn');
   window._invRows=null; window._invCols=null;
   if(total>0){
     await loadAll();
