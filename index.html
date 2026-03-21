@@ -2472,10 +2472,11 @@ enquiries(){
   return `
   <div class="shd"><div class="sttl">Enquiries</div><div style="display:flex;gap:7px"><span class="badge br">${open} Open</span><span class="badge bb">${fu} Follow-Up</span></div></div>
   <div class="fbar">
-    <div class="sw"><span class="swi">🔍</span><input class="si" placeholder="Search customer, model…"/></div>
-    <select class="fs"><option>All Statuses</option><option>Open</option><option>Follow-Up</option><option>Converted</option><option>Lost</option></select>
-    <select class="fs"><option value="">All Sources</option>${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select>
+    <div class="sw"><span class="swi">🔍</span><input class="si" id="enq-search" placeholder="Search customer, model, source…" oninput="filterEnqs()"/></div>
+    <select class="fs" id="enq-status" onchange="filterEnqs()"><option value="">All Statuses</option><option>Open</option><option>Follow-Up</option><option>Converted to Booking</option><option>Lost</option></select>
+    <select class="fs" id="enq-source" onchange="filterEnqs()"><option value="">All Sources</option>${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select>
   </div>
+  <div id="enq-results">
   ${myEnqs().map(e=>`<div class="eq-card" onclick="openEnqModal('${e.id}')">
     <div class="eq-top"><div><div class="eq-name">${e.customer}</div><div class="eq-model">${e.model} · ${e.interest}</div></div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">${e.status==='Open'?'<span class="badge br">Open</span>':'<span class="badge bb">Follow-Up</span>'}${e.se==='Unassigned'?'<span class="badge bgr">Unassigned</span>':`<span class="badge bw">${e.se.split(' ')[0]}</span>`}</div></div>
@@ -2679,17 +2680,44 @@ upload(){
 },
 
 roster(){
-  const days=['Mon 18','Tue 19','Wed 20','Thu 21','Fri 22','Sat 23','Sun 24'];
+  const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayDow = new Date().getDay();
   const cls={ON:'ron',OFF:'roff',AM:'ram',PM:'rpm'};
-  return `<div class="shd"><div class="sttl">Duty Roster — Week 12, March 2024</div><div style="display:flex;gap:7px">${curRole==='admin'?`<button class="btn btn-red" onclick="toast('Upload Excel roster — backend integration ready','warn')">Upload Excel</button>`:''}<button class="btn btn-ghost" onclick="toast('Export feature ready for backend','warn')">Export</button></div></div>
-  <div class="card"><div class="cb" style="padding:0;overflow-x:auto">
-    <table class="roster"><thead><tr><th style="text-align:left;padding-left:15px">Team Member</th><th>Role</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>
-      ${ROSTER_DATA.map(p=>`<tr><td style="text-align:left;padding-left:15px;font-weight:600;color:var(--white);font-size:12px">${p.name}</td><td style="text-align:center"><span class="badge bgr" style="font-size:8px">${p.role}</span></td>${p.days.map(v=>`<td class="${cls[v]||'roff'}">${v}</td>`).join('')}</tr>`).join('')}
-    </tbody></table>
+  const canEdit = ['admin','ss','sa'].includes(curRole);
+  const STATUS_OPTS = ['ON','OFF','AM','PM'];
+  return `
+  <div class="shd">
+    <div class="sttl">Duty Roster</div>
+    ${canEdit?`<button class="btn btn-red btn-sm" onclick="saveRoster()">💾 Save Changes</button>`:''}
   </div>
-  <div style="padding:11px 17px;display:flex;gap:16px;border-top:1px solid var(--border)">
-    <span style="font-size:10px;color:var(--green)">■ ON</span><span style="font-size:10px;color:var(--blue)">■ AM</span><span style="font-size:10px;color:var(--amber)">■ PM</span><span style="font-size:10px;color:var(--faint)">■ OFF</span>
-  </div></div>`;
+  <div class="card" style="overflow-x:auto">
+    <table class="roster">
+      <thead><tr>
+        <th style="text-align:left;padding-left:14px;min-width:140px">Team Member</th>
+        <th style="min-width:60px">Role</th>
+        ${DAYS_SHORT.map((d,i)=>`<th style="text-align:center;${i===todayDow?'color:var(--red);font-weight:800;':''}">${d}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${ROSTER_DATA.map((p,pi)=>`<tr>
+          <td style="text-align:left;padding-left:14px;font-weight:600;color:var(--white);font-size:12px">${p.name}</td>
+          <td style="text-align:center"><span class="badge bgr" style="font-size:8px">${p.role}</span></td>
+          ${p.days.map((v,di)=>canEdit
+            ? `<td style="padding:3px"><select class="roster-sel ${cls[v]||'roff'}" data-pi="${pi}" data-di="${di}" onchange="onRosterChange(this)">
+                ${STATUS_OPTS.map(o=>`<option value="${o}"${o===v?' selected':''}>${o}</option>`).join('')}
+              </select></td>`
+            : `<td class="${cls[v]||'roff'}">${v}</td>`
+          ).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="padding:10px 16px;display:flex;gap:14px;border-top:1px solid var(--border);flex-wrap:wrap;align-items:center">
+      <span style="font-size:10px;color:var(--green)">■ ON</span>
+      <span style="font-size:10px;color:var(--blue)">■ AM</span>
+      <span style="font-size:10px;color:var(--amber)">■ PM</span>
+      <span style="font-size:10px;color:var(--faint)">■ OFF</span>
+      ${canEdit?`<span style="font-size:10px;color:var(--faint);margin-left:auto">Edit cells then press 💾 Save Changes</span>`:''}
+    </div>
+  </div>`;
 },
 
 condition(){
@@ -4531,6 +4559,76 @@ function downloadTemplate(type){
 }
 
 function handleUpload(type){ /* legacy stub — replaced */ }
+
+// ══════════════════════════════════════
+// ROSTER EDITOR
+// ══════════════════════════════════════
+function onRosterChange(sel){
+  const pi = parseInt(sel.dataset.pi);
+  const di = parseInt(sel.dataset.di);
+  const val = sel.value;
+  ROSTER_DATA[pi].days[di] = val;
+  // Update select colour class
+  sel.className = 'roster-sel ' + ({ON:'ron',OFF:'roff',AM:'ram',PM:'rpm'}[val]||'roff');
+}
+
+async function saveRoster(){
+  // Save to Supabase roster table
+  const records = ROSTER_DATA.map(p=>({
+    name: p.name,
+    role: p.role,
+    days: JSON.stringify(p.days),
+    updated_by: curUser,
+    updated_at: new Date().toISOString(),
+  }));
+  let saved = 0, failed = 0;
+  for(const r of records){
+    const {error} = await supa.from('roster').upsert([r], {onConflict:'name'});
+    if(error){ failed++; console.warn('Roster save error:', r.name, error.message); }
+    else saved++;
+  }
+  if(failed > 0) toast(`Saved ${saved}, failed ${failed}`, 'warn');
+  else toast(`Roster saved ✓ — ${saved} members updated`, 'ok');
+}
+
+async function loadRosterFromDB(){
+  const {data, error} = await supa.from('roster').select('*');
+  if(error || !data?.length) return; // keep hardcoded fallback
+  data.forEach(r=>{
+    const idx = ROSTER_DATA.findIndex(x=>x.name===r.name);
+    if(idx >= 0){
+      try { ROSTER_DATA[idx].days = JSON.parse(r.days); } catch(e){}
+    }
+  });
+}
+
+// ══════════════════════════════════════
+// FILTER ENQUIRIES
+// ══════════════════════════════════════
+function filterEnqs(){
+  const s   = (document.getElementById('enq-search')?.value||'').toLowerCase();
+  const st  = document.getElementById('enq-status')?.value||'';
+  const src = document.getElementById('enq-source')?.value||'';
+  const enqs = myEnqs().filter(e=>{
+    const ms  = !s || (e.customer||'').toLowerCase().includes(s)
+                   || (e.model||'').toLowerCase().includes(s)
+                   || (e.source||'').toLowerCase().includes(s)
+                   || (e.notes||'').toLowerCase().includes(s)
+                   || (e.id||'').toLowerCase().includes(s);
+    const mst = !st  || e.status===st;
+    const msr = !src || e.source===src;
+    return ms && mst && msr;
+  });
+  const el = document.getElementById('enq-results');
+  if(!el) return;
+  el.innerHTML = enqs.length
+    ? enqs.map(e=>`<div class="eq-card" onclick="openEnqModal('${e.id}')">
+        <div class="eq-top"><div><div class="eq-name">${e.customer}</div><div class="eq-model">${e.model} · ${e.interest}</div></div>
+        <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">${e.status==='Open'?'<span class="badge br">Open</span>':e.status==='Follow-Up'?'<span class="badge bb">Follow-Up</span>':'<span class="badge bg">'+e.status+'</span>'}${e.se==='Unassigned'?'<span class="badge bgr">Unassigned</span>':`<span class="badge bw">${e.se.split(' ')[0]}</span>`}</div></div>
+        <div class="eq-meta"><span>📅 ${e.date}</span><span>📌 ${e.source}</span><span>💬 ${(e.notes||'').substring(0,60)}</span></div>
+      </div>`).join('')
+    : `<div class="empty"><div class="empty-ico">🔍</div><p>No enquiries match your search</p></div>`;
+}
 
 // ══════════════════════════════════════
 // MODALS
