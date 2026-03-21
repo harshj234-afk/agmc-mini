@@ -1417,7 +1417,7 @@ function targetBanner(role){
           <div style="font-size:12px;font-weight:700;color:var(--white);letter-spacing:.5px">🎯 SHOWROOM TARGET — ${monthName.toUpperCase()} ${year}</div>
           ${!t?'<div style="font-size:10px;color:var(--red);margin-top:2px">No target set yet</div>':''}
         </div>
-        ${false?`<button class="btn btn-ghost btn-sm" onclick="openTargetModal()">
+        ${false?`<button class="btn btn-ghost btn-sm" onclick="openSetTargetModal()">
           ${t?'✏️ Edit Target':'+ Set Target'}
         </button>`:''}
       </div>
@@ -1443,29 +1443,6 @@ function targetBanner(role){
 // ══════════════════════════════════════
 // TARGETS
 // ══════════════════════════════════════
-function getActiveTarget(){
-  return getCurrentMonthTarget();
-}
-
-function getSETarget(seName){
-  const t = getActiveTarget(); if(!t) return null;
-  const seCount = 6;
-  return {
-    invoices: t.invoices ? Math.ceil(t.invoices/seCount) : 0,
-    month: t.month,
-  };
-}
-
-function getPGTarget(pgName){
-  const t = getActiveTarget(); if(!t) return null;
-  const pgList = ['Faizan Asim','Ege Andac'];
-  const pgCount = pgList.length;
-  return {
-    deliveries: t.pg_deliveries ? Math.ceil(t.pg_deliveries/pgCount) : 0,
-    test_drives:t.pg_test_drives? Math.ceil(t.pg_test_drives/pgCount): 0,
-    month: t.month,
-  };
-}
 
 function getDriverTarget(driverName){
   const t = getActiveTarget(); if(!t) return null;
@@ -1498,131 +1475,6 @@ function targetBar(actual, target, label, color){
   </div>`;
 }
 
-function seTargetWidget(seName){
-  const t = getSETarget(seName); if(!t||!t.invoices) return '';
-  const now = new Date();
-  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  const myInv = (DB.invoices||[]).filter(i=>i.se===seName&&(i.invoice_date||'').startsWith(ym)).length;
-  const pct = Math.min(100,Math.round(myInv/t.invoices*100));
-  const col = pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
-  return `<div class="card" style="margin-bottom:16px;border-color:${pct>=100?'rgba(34,197,94,.3)':pct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
-    <div class="ch">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Invoice Target — ${monthLabel}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;color:${col}">${pct}%</div>
-        <div style="font-size:9px;color:var(--faint)">achieved</div>
-      </div>
-    </div>
-    <div style="margin-top:10px">
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">
-        <span style="font-size:32px;font-weight:800;color:${col};line-height:1">${myInv}</span>
-        <span style="font-size:14px;color:var(--faint)">/ ${t.invoices} invoices this month</span>
-      </div>
-      <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
-        <div style="background:${col};height:10px;width:${pct}%;border-radius:6px;transition:width .4s"></div>
-      </div>
-      <div style="font-size:10px;color:var(--faint);margin-top:5px">${t.invoices-myInv>0?`${t.invoices-myInv} more invoices to reach target`:'🎉 Target reached!'}</div>
-    </div>
-  </div>`;
-}
-
-function pgTargetWidget(pgName){
-  const t = getPGTarget(pgName); if(!t) return '';
-  const now = new Date();
-  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  const myDels = DB.deliveries.filter(d=>d.pg_assigned===pgName&&d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym));
-  const myTD   = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym));
-  const delActual = myDels.length;
-  const tdActual  = myTD.length;
-  const delPct = t.deliveries ? Math.min(100,Math.round(delActual/t.deliveries*100)) : 0;
-  const tdPct  = t.test_drives? Math.min(100,Math.round(tdActual/t.test_drives*100)) : 0;
-  const overallPct = t.deliveries||t.test_drives ? Math.round((delPct+(t.test_drives?tdPct:delPct))/2) : 0;
-  const col = p=>p>=100?'var(--green)':p>=60?'var(--amber)':'var(--red)';
-  if(!t.deliveries && !t.test_drives) return '';
-  return `<div class="card" style="margin-bottom:16px;border-color:${overallPct>=100?'rgba(34,197,94,.3)':overallPct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
-    <div class="ch" style="margin-bottom:12px">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Monthly Target — ${monthLabel}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:22px;font-weight:800;color:${col(overallPct)}">${overallPct}%</div>
-        <div style="font-size:9px;color:var(--faint)">Overall</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      ${[[delActual,t.deliveries,delPct,'🚗 Deliveries'],[tdActual,t.test_drives,tdPct,'🏎 Test Drives']].map(([a,tgt,pct,lbl])=>`
-        <div style="background:var(--surface2);border-radius:8px;padding:14px 12px;text-align:center">
-          <div style="font-size:10px;color:var(--faint);margin-bottom:8px">${lbl}</div>
-          <div style="font-size:26px;font-weight:800;color:${tgt?col(pct):'var(--dim)'};line-height:1">${a}</div>
-          <div style="font-size:11px;color:var(--faint);margin:3px 0">/ ${tgt||'—'} target</div>
-          <div style="background:var(--surface);border-radius:4px;height:6px;margin-top:8px;overflow:hidden">
-            <div style="background:${tgt?col(pct):'var(--surface2)'};height:6px;width:${pct}%;border-radius:4px;transition:width .4s"></div>
-          </div>
-          <div style="font-size:11px;font-weight:700;color:${tgt?col(pct):'var(--faint)'};margin-top:4px">${tgt?pct+'%':'No target'}</div>
-        </div>`).join('')}
-    </div>
-  </div>`;
-}
-
-
-function showroomTargetWidget(editable){
-  const t = getActiveTarget();
-  const now = new Date();
-  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const monthLabel = now.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  const allDel  = DB.deliveries.filter(d=>d.status==='Delivered'&&(d.delivery_date||'').startsWith(ym)).length;
-  const allTD   = DB.enquiries.filter(e=>(e.test_drive===true||e.test_drive==='true')&&(e.date||'').startsWith(ym)).length;
-  const allInvM = (DB.invoices||[]).filter(i=>(i.invoice_date||'').startsWith(ym)).length;
-  const invT    = t?.invoices||0;
-  const pgDelT  = t?.pg_deliveries||0;
-  const pgTdT   = t?.pg_test_drives||0;
-  const invPct  = invT   ? Math.min(100,Math.round(allInvM/invT*100))  : 0;
-  const delPct  = pgDelT ? Math.min(100,Math.round(allDel/pgDelT*100)) : 0;
-  const tdPct   = pgTdT  ? Math.min(100,Math.round(allTD/pgTdT*100))   : 0;
-  const overallPct   = invT||pgDelT||pgTdT ? Math.round((invPct+delPct+tdPct)/3) : 0;
-  const overallColor = overallPct>=100?'var(--green)':overallPct>=60?'var(--amber)':'var(--red)';
-  return `<div class="card" style="margin-bottom:14px;border-color:${overallPct>=100?'rgba(34,197,94,.3)':overallPct>=60?'rgba(245,158,11,.3)':'rgba(226,0,26,.2)'}">
-    <div class="ch" style="margin-bottom:10px">
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px">🎯 Showroom Target — ${monthLabel}</div>
-        ${!t?'<div style="font-size:11px;color:var(--amber);margin-top:2px">⚠️ No target set for this month</div>':''}
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="text-align:right">
-          <div style="font-size:22px;font-weight:800;color:${overallColor}">${overallPct}%</div>
-          <div style="font-size:9px;color:var(--faint)">Overall</div>
-        </div>
-        ${editable?`<button class="btn btn-ghost btn-sm" style="color:var(--amber);border-color:rgba(245,158,11,.3)" onclick="openSetTargetModal()">✏️ ${t?'Edit':'Set'} Target</button>`:''}
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      ${[
-        {l:'🧾 Invoices',    a:allInvM,tgt:invT,  pct:invPct, sub:'SE ÷6'},
-        {l:'🚗 Deliveries',  a:allDel, tgt:pgDelT,pct:delPct, sub:'PG ÷2'},
-        {l:'🏎 Test Drives', a:allTD,  tgt:pgTdT, pct:tdPct,  sub:'PG ÷2'},
-      ].map(({l,a,tgt,pct,sub})=>{
-        const col=pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
-        return `<div style="background:var(--surface2);border-radius:8px;padding:12px 10px;text-align:center">
-          <div style="font-size:9px;color:var(--faint);margin-bottom:1px">${l}</div>
-          <div style="font-size:8px;color:var(--faint);opacity:.55;margin-bottom:5px">${sub}</div>
-          <div style="font-size:20px;font-weight:800;color:${tgt?col:'var(--dim)'}">${a}</div>
-          <div style="font-size:10px;color:var(--faint);margin:2px 0">/ ${tgt||'—'} target</div>
-          <div style="background:var(--surface);border-radius:3px;height:4px;margin-top:5px;overflow:hidden">
-            <div style="background:${col};height:4px;width:${pct}%;border-radius:3px"></div>
-          </div>
-          <div style="font-size:10px;font-weight:700;color:${tgt?col:'var(--faint)'};margin-top:3px">${tgt?pct+'%':'—'}</div>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
-}
-// ══════════════════════════════════════
-// SHARED HELPERS
-// ══════════════════════════════════════
 function rosterWidget(name){
   const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const todayIdx = new Date().getDay();
@@ -1877,6 +1729,7 @@ dashboard(){
       </div>
       <button class="btn btn-red" onclick="goTo('upload')">📤 Morning Upload →</button>
     </div>
+    ${showroomTargetWidget(false)}
 
       <div class="sg">
       <div class="sc red"><div class="slbl">Total Bookings</div><div class="sval" style="color:var(--red)">${allBk.length}</div><div class="ssub">All team pipeline</div><div class="sico">📋</div></div>
@@ -2019,7 +1872,7 @@ dashboard(){
           <td class="tm tb">${b.id}</td><td class="tb">${b.customer.split(' ').slice(0,2).join(' ')}</td>
           <td style="font-size:11px">${b.model||'—'}</td>
           <td style="font-size:11px">${b.color||'—'}</td>
-          <td style="font-size:11px">${b.se.split(' ')[0]}</td>
+          <td style="font-size:11px">${(b.se||'').split(' ')[0]}</td>
           <td><span class="badge ${b.pdi===6?'bg':'ba'}">${PDI_STAGES[b.pdi]||'—'}</span></td>
           <td><div style="display:flex;gap:4px">
             <button class="btn btn-ghost btn-xs" onclick="openBkModal('${b.id}')">View</button>
@@ -2396,6 +2249,7 @@ dashboard(){
     </div>
   </div>
 
+  ${showroomTargetWidget(true)}
   ${todayDelA.length?`<div style="background:rgba(226,0,26,.06);border:1px solid rgba(226,0,26,.25);border-radius:var(--rl);padding:13px 17px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🚗</span><div><div style="font-size:13px;font-weight:700">${todayDelA.length} Delivery Today</div><div style="font-size:11px;color:var(--dim)">${todayDelA.map(d=>d.customer).join(' · ')}</div></div></div><button class="btn btn-red btn-sm" onclick="goTo('delivery')">View →</button></div>`:''}
 
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px">
@@ -2483,7 +2337,14 @@ enquiries(){
   const open=myEnqs().filter(e=>e.status==='Open').length;
   const fu=myEnqs().filter(e=>e.status==='Follow-Up').length;
   return `
-  <div class="shd"><div class="sttl">Enquiries</div><div style="display:flex;gap:7px"><span class="badge br">${open} Open</span><span class="badge bb">${fu} Follow-Up</span></div></div>
+  <div class="shd">
+    <div class="sttl">Enquiries</div>
+    <div style="display:flex;gap:7px;align-items:center">
+      <span class="badge br">${open} Open</span>
+      <span class="badge bb">${fu} Follow-Up</span>
+      ${['se','sa','admin','ss'].includes(curRole)?`<button class="btn btn-red btn-sm" onclick="openNewEnquiryModal()">+ New Enquiry</button>`:''}
+    </div>
+  </div>
   <div class="fbar">
     <div class="sw"><span class="swi">🔍</span><input class="si" id="enq-search" placeholder="Search customer, model, source…" oninput="filterEnqs()"/></div>
     <select class="fs" id="enq-status" onchange="filterEnqs()"><option value="">All Statuses</option><option>Open</option><option>Follow-Up</option><option>Converted to Booking</option><option>Lost</option></select>
@@ -2549,10 +2410,16 @@ delivery(){
     </div>
   </div>
   <div class="card" style="margin-bottom:16px">
-    <div class="ch"><div class="ct">📅 March 2024</div><div style="display:flex;gap:5px"><span class="badge bg">Delivery</span><span class="badge br">PDI</span></div></div>
+    <div class="ch"><div class="ct">📅 ${new Date().toLocaleString('en-AE',{month:'long',year:'numeric'})}</div><div style="display:flex;gap:5px"><span class="badge bg">Delivery</span><span class="badge br">PDI</span></div></div>
     <div class="cb"><div class="cal">
-      ${['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d=>`<div class="cal-dh">${d}</div>`).join('')}
-      ${Array.from({length:31},(_,i)=>{const d=i+1;const dd=DB.bookings.filter(b=>b.delivery===`2024-03-${String(d).padStart(2,'0')}`);return `<div class="cal-day${d===18?' today':''}"><div class="cal-dn">${d}</div>${dd.map(b=>`<div class="cal-ev ev-d" title="${b.customer}">🚗 ${(b.se||'').split(' ')[0]}</div>`).join('')}</div>`;}).join('')}
+      ${['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d=>`<div class="cal-dh">${d}</div>`).join('')}
+      ${(()=>{const n=new Date(),y=n.getFullYear(),m=n.getMonth(),dim=new Date(y,m+1,0).getDate(),dow=new Date(y,m,1).getDay(),td=n.getDate();
+        const ym=y+'-'+String(m+1).padStart(2,'0');
+        return Array(dow).fill('<div class="cal-day" style="opacity:0"></div>').join('')+
+        Array.from({length:dim},(_,i)=>{const d=i+1,ds=ym+'-'+String(d).padStart(2,'0');
+          const dels=DB.deliveries.filter(x=>x.delivery_date===ds);
+          return `<div class="cal-day${d===td?' today':''}"><div class="cal-dn">${d}</div>${dels.map(x=>`<div class="cal-ev ev-d" title="${x.customer}">🚗 ${(x.se||'').split(' ')[0]}</div>`).join('')}</div>`;
+        }).join('');})()}
     </div></div>
   </div>
   ${myDeliveries.length?`<div class="card" style="margin-bottom:16px">
@@ -3021,11 +2888,24 @@ registration(){
 
 performance(){
   const now2=new Date(); const perfMonth=now2.toLocaleString('en-AE',{month:'long',year:'numeric'});
-  return `<div class="shd"><div class="sttl">Performance — ${perfMonth}</div></div>
-  <div class="sg"><div class="sc red"><div class="slbl">Bookings MTD</div><div class="sval" style="color:var(--red)">${DB.bookings.length}</div><div class="ssub">Target: 12</div></div>
-  <div class="sc green"><div class="slbl">Deliveries MTD</div><div class="sval" style="color:var(--green)">${DB.bookings.filter(b=>b.deal==='Delivered').length}</div><div class="ssub">Target: 8</div></div>
-  <div class="sc amber"><div class="slbl">Conversion Rate</div><div class="sval" style="color:var(--amber)">58%</div><div class="ssub">Enq → Booking</div></div>
-  <div class="sc blue"><div class="slbl">Avg Deal Days</div><div class="sval" style="color:var(--blue)">8.4</div><div class="ssub">Booking to Delivery</div></div></div>
+  const ym2 = now2.getFullYear()+'-'+String(now2.getMonth()+1).padStart(2,'0');
+  const perfBks  = DB.bookings.filter(b=>b.deal!=='Lost');
+  const perfDel  = DB.bookings.filter(b=>b.deal==='Delivered');
+  const perfInv  = DB.invoices.filter(i=>(i.invoice_date||'').startsWith(ym2));
+  const perfEnq  = DB.enquiries.length;
+  const perfConv = perfEnq > 0 ? Math.round(perfBks.length/perfEnq*100) : 0;
+  const tgt      = getActiveTarget();
+  const tgtInv   = tgt?.invoices || 0;
+  const tgtDel   = tgt?.pg_deliveries || 0;
+  return `<div class="shd"><div class="sttl">Performance — ${perfMonth}</div>
+    ${tgt?'':'<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:var(--rl);padding:10px 16px;margin-bottom:12px;font-size:12px;color:var(--amber)">⚠️ No target set for this month — set one from the SS or Admin dashboard</div>'}
+  </div>
+  <div class="sg">
+    <div class="sc red"><div class="slbl">Active Bookings</div><div class="sval" style="color:var(--red)">${perfBks.length}</div><div class="ssub">${tgtInv?'Target: '+tgtInv:'No target set'}</div></div>
+    <div class="sc green"><div class="slbl">Delivered MTD</div><div class="sval" style="color:var(--green)">${perfDel.length}</div><div class="ssub">${tgtDel?'Target: '+tgtDel:'No target set'}</div></div>
+    <div class="sc amber"><div class="slbl">Invoiced MTD</div><div class="sval" style="color:var(--amber)">${perfInv.length}</div><div class="ssub">${tgtInv?'Target: '+tgtInv:'No target set'}</div></div>
+    <div class="sc blue"><div class="slbl">Conversion Rate</div><div class="sval" style="color:var(--blue)">${perfConv}%</div><div class="ssub">Enquiry → Booking</div></div>
+  </div>
   <div class="g2">
     <div class="card"><div class="ch"><div class="ct">SE Leaderboard</div></div>
     <table class="tbl"><thead><tr><th>#</th><th>Sales Executive</th><th>Bookings</th><th>Delivered</th><th>Active PDI</th></tr></thead><tbody>
@@ -3098,12 +2978,6 @@ async function doMarkDelivered(id){
   toast(`${b.customer} — Delivered ✓`,'ok'); goTo(curPage);
 }
 
-async function doUpdateDemo(id,status){
-  const {error}=await supa.from('demo_cars').update({status,updated_at:new Date().toISOString()}).eq('id',id);
-  if(error){toast('Error updating demo car','err');return;}
-  toast('Demo car status updated ✓','ok');
-}
-
 async function doSaveNewBooking(){
   const id=genId('BK');
   const obj={
@@ -3152,6 +3026,7 @@ async function doSaveNewEnquiry(){
     date:new Date().toISOString().split('T')[0],
     status:'Open',
     se:document.getElementById('neq-se')?.value||'Unassigned',
+    test_drive:document.getElementById('neq-td')?.value==='true',
     notes:document.getElementById('neq-notes')?.value||'',
   };
   if(!obj.customer){toast('Customer name required','warn');return;}
@@ -4895,7 +4770,7 @@ function openBkModal(id){
       ${curRole==='se'?`<button class="bma-btn bma-blue" onclick="closeM();openDailyUpdateModal('${b.id}')"><span class="bma-ico">💬</span><span class="bma-lbl">Update</span></button>`:''}
       ${canPDI()?`<button class="bma-btn bma-purple" onclick="closeM();openPDIModal('${b.id}')"><span class="bma-ico">🔧</span><span class="bma-lbl">PDI</span></button>`:''}
       ${curRole==='se'?`<button class="bma-btn bma-green" onclick="closeM();openScheduleDeliveryModal('${b.id}')"><span class="bma-ico">🚗</span><span class="bma-lbl">Delivery</span></button>`:''}
-      ${(curRole==='se'||curRole==='sa'||curRole==='admin')&&b.deal!=='Invoiced'&&b.deal!=='Delivered'&&b.deal!=='Lost'?`<button class="bma-btn bma-amber" onclick="closeM();openInvoiceModal('${b.id}')"><span class="bma-ico">🧾</span><span class="bma-lbl">Invoice</span></button>`:b.deal==='Invoiced'?`<div class="bma-badge-done"><span class="bma-ico">✅</span><span class="bma-lbl" style="color:var(--green)">Invoiced</span></div>`:''}
+      ${(['se','sa','admin','ss'].includes(curRole))&&b.deal!=='Invoiced'&&b.deal!=='Delivered'&&b.deal!=='Lost'?`<button class="bma-btn bma-amber" onclick="closeM();openInvoiceModal('${b.id}')"><span class="bma-ico">🧾</span><span class="bma-lbl">Invoice</span></button>`:b.deal==='Invoiced'?`<div class="bma-badge-done"><span class="bma-ico">✅</span><span class="bma-lbl" style="color:var(--green)">Invoiced</span></div>`:''}
     </div>
     ${canDeal()&&b.deal!=='Delivered'&&b.deal!=='Lost'?`
       <button class="bma-advance" onclick="closeM();doAdvanceDeal('${b.id}')">
@@ -4954,33 +4829,6 @@ function openDriverPDIModal(id){
   `);
 }
 
-async function doDriverPDIUpdate(id){
-  const b = DB.bookings.find(x=>x.id===id); if(!b) return;
-  const newStageIdx = parseInt(document.getElementById('dpdi-stage')?.value);
-  const tinting     = document.getElementById('dpdi-tint')?.value || b.tinting;
-  const ceramic     = document.getElementById('dpdi-cer')?.value === 'Yes';
-  const notes       = document.getElementById('dpdi-notes')?.value||null;
-  if(!newStageIdx){ toast('Please select a stage','warn'); return; }
-  // Validate driver can only set allowed stages
-  const allowed = DRIVER_PDI_STAGES.map(s=>s.idx);
-  if(!allowed.includes(newStageIdx)){ toast('Not authorised to set this stage','err'); return; }
-  const {error} = await supa.from('bookings').update({
-    pdi:     newStageIdx,
-    tinting: tinting,
-    ceramic: ceramic,
-    notes:   notes || b.notes,
-  }).eq('id',id);
-  if(error){ toast('Error: '+error.message,'err'); return; }
-  // Notify SA
-  await supa.from('notifications').insert([{
-    title:`🔧 PDI Update — ${id}`,
-    body:`${curUser} updated PDI to "${PDI_STAGES[newStageIdx]}" for ${b.customer} — ${b.model}`,
-    type:'pdi', target_role:'sa', read:false, booking_id:id
-  }]);
-  closeM(); toast(`PDI updated to "${PDI_STAGES[newStageIdx]}" ✓`,'ok');
-  await loadAll();
-}
-
 function openPDIModal(id){
   const b=DB.bookings.find(x=>x.id===id); if(!b) return;
   const isDriver = curRole==='driver';
@@ -5035,6 +4883,27 @@ function openEnqModal(id){
     </div>
     <div class="fg"><label>Notes</label><textarea class="fc" id="eq-notes" rows="3">${e.notes||''}</textarea></div>
   `,`<button class="btn btn-ghost" onclick="closeM()">Close</button><button class="btn btn-red" onclick="doSaveEnquiry('${e.id}')">Save Changes</button>`);
+}
+
+function openNewEnquiryModal(){
+  openM('+ New Enquiry',`
+    <div class="fr c2">
+      <div class="fg"><label>Customer Name</label><input class="fc" id="neq-cust" placeholder="Full name"/></div>
+      <div class="fg"><label>Model of Interest</label><select class="fc" id="neq-model"><option value="">— Select —</option>${MODELS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Interest</label><select class="fc" id="neq-int"><option>Purchase</option><option>Test Drive</option><option>Enquiry</option></select></div>
+      <div class="fg"><label>Source</label><select class="fc" id="neq-src">${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select></div>
+    </div>
+    <div class="fr c2">
+      <div class="fg"><label>Assign SE</label><select class="fc" id="neq-se"><option value="Unassigned">Unassigned</option>${USERS.se.map(u=>`<option ${u===curUser?'selected':''}>${u}</option>`).join('')}</select></div>
+      <div class="fg"><label>Test Drive Done?</label><select class="fc" id="neq-td"><option value="false">No</option><option value="true">Yes</option></select></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fc" id="neq-notes" rows="2" placeholder="Any additional notes…"></textarea></div>
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn btn-red" onclick="doSaveNewEnquiry()">Add Enquiry</button>
+  `);
 }
 
 function openNewBkModal(){
