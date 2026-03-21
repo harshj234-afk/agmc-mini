@@ -55,7 +55,7 @@ html{height:100%;height:-webkit-fill-available;}body{height:100%;height:-webkit-
 .sb-bname{font-size:14px;font-weight:800;color:var(--white);letter-spacing:1px;}
 .sb-bsub{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;}
 .sb-user{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
-.sb-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:#fff;}
+.sb-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:#fff;cursor:pointer;border:2px solid rgba(255,255,255,.15);transition:opacity .15s;}.sb-av:hover{opacity:.85;}
 .sb-uname{font-size:12px;font-weight:600;color:var(--white);line-height:1.2;}
 .sb-urole{font-size:10px;color:var(--dim);}
 .sb-nav{flex:1;padding:8px 0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0;}
@@ -71,6 +71,12 @@ html{height:100%;height:-webkit-fill-available;}body{height:100%;height:-webkit-
 /* MAIN */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;max-width:100vw;}
 .topbar{padding:0 26px;height:52px;background:var(--dark);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;cursor:pointer;flex-shrink:0;transition:opacity .15s;border:2px solid rgba(255,255,255,.15);}
+.avatar:hover{opacity:.85;}
+.theme-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
+.theme-swatch:hover,.theme-swatch.active{border-color:var(--white);transform:scale(1.15);}
+.theme-panel{position:fixed;top:56px;right:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;z-index:998;min-width:220px;box-shadow:var(--shl);display:none;}
+.theme-panel.on{display:block;animation:mIn .18s ease;}
 .pg-title{font-size:17px;font-weight:700;color:var(--white);}
 .tb-right{display:flex;align-items:center;gap:9px;}
 .tb-date{font-size:10px;color:var(--dim);font-family:'Space Mono',monospace;}
@@ -893,7 +899,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
       <div><div class="sb-bname">AGMC</div><div class="sb-bsub">Sales Tool</div></div>
     </div>
     <div class="sb-user">
-      <div class="sb-av" id="sb-av"></div>
+      <div class="sb-av" id="sb-av" onclick="toggleThemePanel()" title="Change theme" style="cursor:pointer"></div>
       <div><div class="sb-uname" id="sb-name">—</div><div class="sb-urole" id="sb-role">—</div></div>
     </div>
     <nav class="sb-nav" id="sb-nav"></nav>
@@ -908,10 +914,16 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:14px 0;}
         <div id="menu-btn" onclick="toggleSidebar()">☰</div>
         <div class="pg-title" id="pg-title">Dashboard</div>
       </div>
-      <div class="tb-right">
+      <div class="tb-right" style="display:flex;align-items:center;gap:10px">
         <div class="tb-date" id="tb-date"></div>
         <div class="tb-btn" onclick="toggleNotif()">🔔<div class="nb-dot" id="nb-dot"></div></div>
       </div>
+    </div>
+    <!-- Theme Panel -->
+    <div class="theme-panel" id="theme-panel">
+      <div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:12px">🎨 Your Theme</div>
+      <div id="theme-swatches" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <div style="font-size:10px;color:var(--faint);padding-top:10px;border-top:1px solid var(--border)" id="theme-user-info"></div>
     </div>
     <div class="content" id="content"></div>
   </div>
@@ -1059,6 +1071,18 @@ async function loadAll(){
 
 function initApp(){
   buildNav();
+  // Populate sidebar user info
+  const nameEl = document.getElementById('sb-name');
+  const roleEl = document.getElementById('sb-role');
+  const avEl   = document.getElementById('sb-av');
+  if(nameEl) nameEl.textContent = curUser;
+  if(roleEl) roleEl.textContent = ROLE_LABEL[curRole] || curRole;
+  const initials = curUser.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const saved = (() => { try{ return JSON.parse(localStorage.getItem('agmc_theme_'+curUser.replace(/\s+/g,'_'))||'null'); }catch(e){return null;} })();
+  const colour = saved ? saved.colour : '#E2001A';
+  if(avEl){ avEl.textContent = initials; avEl.style.background = colour; }
+  setTimeout(initTheme, 50);
+  updateSidebarUser();
   const firstPage = (NAV[curRole]||[])[0]?.p || 'dashboard';
   goTo(firstPage);
   renderNotif();
