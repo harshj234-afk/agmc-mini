@@ -2686,7 +2686,7 @@ roster(){
   const todayDow = new Date().getDay();
   const cls={'9-6':'r96','10-7':'r107','11-8':'r118','OFF':'roff','CO':'rco','AL':'ral','SL':'rsl','EL':'rel'};
   const canEdit = ['admin','ss','sa'].includes(curRole);
-  const STATUS_OPTS = ['ON','OFF','AM','PM'];
+  const STATUS_OPTS = ['9-6','10-7','11-8','OFF','CO','AL','SL','EL'];
   return `
   <div class="shd">
     <div class="sttl">Duty Roster</div>
@@ -2713,10 +2713,12 @@ roster(){
       </tbody>
     </table>
     <div style="padding:10px 16px;display:flex;gap:14px;border-top:1px solid var(--border);flex-wrap:wrap;align-items:center">
-      <span style="font-size:10px;color:var(--green)">■ ON</span>
-      <span style="font-size:10px;color:var(--blue)">■ AM</span>
-      <span style="font-size:10px;color:var(--amber)">■ PM</span>
+      <span style="font-size:10px;color:var(--green)">■ 9-6</span>
+      <span style="font-size:10px;color:#34d399">■ 10-7</span>
+      <span style="font-size:10px;color:var(--amber)">■ 11-8</span>
       <span style="font-size:10px;color:var(--faint)">■ OFF</span>
+      <span style="font-size:10px;color:#f87171">■ CO</span>
+      <span style="font-size:10px;color:#a78bfa">■ AL/SL/EL</span>
       ${canEdit?`<span style="font-size:10px;color:var(--faint);margin-left:auto">Edit cells then press 💾 Save Changes</span>`:''}
     </div>
   </div>`;
