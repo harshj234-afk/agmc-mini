@@ -2659,6 +2659,38 @@ upload(){
     </div></div>
   </div>
 
+  <!-- ── Invoice Upload (Admin only) ── -->
+  ${curRole==='admin'?`
+  <div class="card" style="margin-bottom:16px;border-color:rgba(245,158,11,.3)">
+    <div class="ch">
+      <div>
+        <div class="ct" style="color:var(--amber)">🧾 Invoice Upload</div>
+        <div style="font-size:11px;color:var(--faint);margin-top:2px">Upload AGMC invoice Excel — bookings matched by VIN will be automatically marked as Invoiced</div>
+      </div>
+      <span class="badge ba">Admin Only</span>
+    </div>
+    <div class="cb">
+      <div class="upzone" id="inv-zone"
+        ondragover="event.preventDefault();this.classList.add('upzone-active')"
+        ondragleave="this.classList.remove('upzone-active')"
+        ondrop="handleInvDrop(event)"
+        onclick="document.getElementById('inv-file').click()">
+        <div class="upi">🧾</div>
+        <div class="upt">Click or drag &amp; drop invoice file here</div>
+        <div class="ups">.xlsx · .xls · .csv · Matched by VIN</div>
+      </div>
+      <input type="file" id="inv-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleInvFile(this)"/>
+      <div id="inv-preview"></div>
+      <div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:var(--r)">
+        <div style="font-size:10px;font-weight:700;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Expected Columns</div>
+        <div style="font-size:10px;color:var(--faint);font-family:'Space Mono',monospace;line-height:1.9">
+          VIN &nbsp;·&nbsp; Invoice Number &nbsp;·&nbsp; Invoice Date &nbsp;·&nbsp; Customer Name &nbsp;·&nbsp; VSB No &nbsp;·&nbsp; Model &nbsp;·&nbsp; SE Name &nbsp;·&nbsp; Amount
+        </div>
+      </div>
+    </div>
+  </div>
+  `:''}
+
   <div class="card"><div class="ch"><div class="ct">Upload History</div></div>
   <table class="tbl"><thead><tr><th>Date & Time</th><th>Type</th><th>File</th><th>Records</th><th>Uploaded By</th><th>Status</th></tr></thead>
   <tbody id="upload-history">
