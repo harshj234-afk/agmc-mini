@@ -5176,8 +5176,8 @@ async function doImportInvoices(){
       invoiced++;
     }
 
-    // ── Create invoice record (skip if invoice_no already exists) ──
-    const existingInv = (DB.invoices||[]).find(i=>i.invoice_no===invNo || (i.vin===vin && i.booking_id===bk.id));
+    // ── Create invoice record ──
+    const _oldExistingInv = (DB.invoices||[]).find(i=>i.invoice_no===invNo || (i.vin===vin && i.booking_id===bk.id));
     if(existingInv){ skipped++; continue; }
     const invRecord = {
       booking_id:         bk.id,
@@ -5191,36 +5191,35 @@ async function doImportInvoices(){
       vsb_no:             vsb || bk.vsb_no || null,
       se:                 se,
       created_by:         curUser,
-      sa_processed_by:    saCredit || null,
+      sa_processed_by:    (saCredit==='both'?'Nourhan Walid,Francis de Castro Escueta':saCredit) || null,
       created_at:         now,
       delivery_scheduled: false,
       registration_id:    null,
     };
 
-    // Check if invoice already exists by invoice_no — update if so, insert if not
-    const existing = DB.invoices.find(i => i.invoice_no === invNo || i.booking_id === bk.id);
-    if(existing){
-      // Update existing invoice record with fresh data
+    // Always upsert — insert or update by invoice_no
+    const existingInv = (DB.invoices||[]).find(i => i.invoice_no===invNo);
+    if(existingInv){
       await supa.from('invoices').update({
-        invoice_date: invRecord.invoice_date,
-        customer:     invRecord.customer,
-        model:        invRecord.model,
-        vin:          invRecord.vin,
-        vsb_no:       invRecord.vsb_no,
-        se:           invRecord.se,
+        invoice_date:    invRecord.invoice_date,
+        customer:        invRecord.customer,
+        model:           invRecord.model,
+        vin:             invRecord.vin,
+        vsb_no:          invRecord.vsb_no,
+        se:              invRecord.se,
         sa_processed_by: invRecord.sa_processed_by,
-      }).eq('id', existing.id);
+      }).eq('id', existingInv.id);
     } else {
-      // Insert new invoice — try full record, fallback to minimal
-      let {error: invErr} = await supa.from('invoices').insert([invRecord]);
+      const {error: invErr} = await supa.from('invoices').insert([invRecord]);
       if(invErr){
-        const safe = {booking_id:invRecord.booking_id, invoice_no:invRecord.invoice_no,
-          invoice_date:invRecord.invoice_date, customer:invRecord.customer,
-          model:invRecord.model, vin:invRecord.vin, se:invRecord.se,
-          created_by:invRecord.created_by, created_at:invRecord.created_at,
-          delivery_scheduled:false, registration_id:null};
-        const {error: invErr2} = await supa.from('invoices').insert([safe]);
-        if(invErr2){ console.error('Invoice insert failed:', invErr2.message); }
+        // Fallback minimal insert
+        await supa.from('invoices').insert([{
+          booking_id: invRecord.booking_id, invoice_no: invRecord.invoice_no,
+          invoice_date: invRecord.invoice_date, customer: invRecord.customer,
+          model: invRecord.model, vin: invRecord.vin, se: invRecord.se,
+          created_by: invRecord.created_by, created_at: invRecord.created_at,
+          delivery_scheduled: false, registration_id: null,
+        }]);
       }
     }
 
