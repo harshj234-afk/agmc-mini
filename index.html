@@ -281,12 +281,18 @@ textarea.fc{resize:vertical;min-height:70px;}
 
 /* TOAST */
 .tw{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:7px;}
-.toast{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--white);box-shadow:var(--sh);display:flex;align-items:center;gap:9px;min-width:240px;max-width:320px;animation:tIn .22s ease;}
-@keyframes tIn{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:translateX(0);}}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:13px 16px;font-size:13px;color:var(--white);box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;align-items:flex-start;gap:10px;min-width:280px;max-width:360px;animation:tIn .25s cubic-bezier(.34,1.56,.64,1);}
+.toast-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.toast-body{flex:1;min-width:0;}
+.toast-title{font-size:13px;font-weight:700;color:var(--white);margin-bottom:1px;}
+.toast-sub{font-size:11px;color:var(--dim);}
+@keyframes tIn{from{opacity:0;transform:translateX(24px) scale(.95);}to{opacity:1;transform:translateX(0) scale(1);}}
 @keyframes shake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-6px);}40%,80%{transform:translateX(6px);}}
-.toast.tok{border-color:rgba(34,197,94,.3);}
-.toast.twarn{border-color:rgba(245,158,11,.3);}
-.toast.terr{border-color:rgba(226,0,26,.3);}
+.toast.tok{border-color:rgba(34,197,94,.4);border-left:3px solid var(--green);}
+.toast.twarn{border-color:rgba(245,158,11,.4);border-left:3px solid var(--amber);}
+.toast.terr{border-color:rgba(226,0,26,.4);border-left:3px solid var(--red);}
+.toast.tnotif{border-color:rgba(59,130,246,.4);border-left:3px solid var(--blue);animation:tIn .25s cubic-bezier(.34,1.56,.64,1),notifPulse 1s ease 3;}
+@keyframes notifPulse{0%,100%{box-shadow:0 8px 32px rgba(0,0,0,.5);}50%{box-shadow:0 8px 32px rgba(59,130,246,.4);}}
 
 /* UPLOAD PREVIEW */
 .up-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px;}
@@ -5238,10 +5244,49 @@ function openRaiseFlagModal(id=''){
 // ══════════════════════════════════════
 // NOTIFICATIONS
 // ══════════════════════════════════════
+// Track last known unread count for sound/toast trigger
+let _lastUnread = 0;
+
+function playChime(){
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    // Two-tone chime: a pleasant notification sound
+    [[880,0],[1100,0.15],[660,0.3]].forEach(([freq,delay])=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime+delay);
+      gain.gain.setValueAtTime(0, ctx.currentTime+delay);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime+delay+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+delay+0.35);
+      osc.start(ctx.currentTime+delay);
+      osc.stop(ctx.currentTime+delay+0.4);
+    });
+  } catch(e){ /* audio not available */ }
+}
+
+function updateTabTitle(unread){
+  const base = 'AGMC MINI';
+  document.title = unread > 0 ? `(${unread}) ${base}` : base;
+}
+
 function renderNotif(){
   const unread=DB.notifications.filter(n=>!n.read).length;
   const dot=document.getElementById('nb-dot');
   if(dot) dot.classList.toggle('on',unread>0);
+
+  // New notifications arrived — play sound + show toast + update tab
+  if(unread > _lastUnread && _lastUnread >= 0){
+    const newCount = unread - _lastUnread;
+    const newest = DB.notifications.find(n=>!n.read);
+    if(newest && document.visibilityState !== undefined){
+      playChime();
+      toast(newest.title, 'notif', newest.body?.substring(0,60));
+    }
+  }
+  _lastUnread = unread;
+  updateTabTitle(unread);
   const list=document.getElementById('np-list');
   if(list) list.innerHTML=DB.notifications.slice(0,20).map(n=>{
     const pageMap={
@@ -5284,7 +5329,10 @@ async function markNRead(id){
 }
 async function markAllRead(){
   await supa.from('notifications').update({read:true}).eq('read',false);
-  DB.notifications.forEach(n=>n.read=true); renderNotif(); toast('All read','ok');
+  DB.notifications.forEach(n=>n.read=true);
+  _lastUnread = 0;
+  renderNotif();
+  toast('All notifications marked as read','ok');
 }
 
 // ══════════════════════════════════════
@@ -5319,13 +5367,15 @@ function filterBks(){
 // ══════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════
-function toast(msg,type='ok'){
-  const ico={ok:'✅',warn:'⚠️',err:'❌'};
-  const el=document.createElement('div');
-  el.className=`toast t${type}`;
-  el.innerHTML=`<span>${ico[type]||'ℹ️'}</span><span>${msg}</span>`;
+function toast(msg, type='ok', sub=''){
+  const ico={ok:'✅', warn:'⚠️', err:'❌', notif:'🔔'};
+  const el = document.createElement('div');
+  el.className = `toast t${type}`;
+  el.innerHTML = `<span class="toast-icon">${ico[type]||'ℹ️'}</span>`
+    + `<div class="toast-body"><div class="toast-title">${msg}</div>${sub?`<div class="toast-sub">${sub}</div>`:''}</div>`;
+  el.onclick = ()=>el.remove();
   document.getElementById('tw').appendChild(el);
-  setTimeout(()=>el.remove(),3500);
+  setTimeout(()=>{ el.style.animation='tIn .2s ease reverse'; setTimeout(()=>el.remove(),200); }, type==='notif'?6000:3500);
 }
 
 // ══════════════════════════════════════
