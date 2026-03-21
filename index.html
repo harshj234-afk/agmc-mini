@@ -1749,11 +1749,23 @@ dashboard(){
     const todayDels = DB.deliveries.filter(d=>d.delivery_date===today);
     const pendFin = allBk.filter(b=>b.deal==='Finance Pending').length;
     const ym = today.slice(0,7);
-    const totalInv    = (DB.invoices||[]).length;
-    const invThisMonth= (DB.invoices||[]).filter(i=>(i.invoice_date||'').startsWith(ym)).length;
-    const totalReg    = (DB.registrations||[]).length;
-    const pendingReg  = (DB.invoices||[]).filter(i=>!i.registration_id).length;
-    const delScheduled= (DB.deliveries||[]).filter(d=>d.status!=='Delivered').length;
+    // ── SHOWROOM totals ──
+    const totalInv     = (DB.invoices||[]).length;
+    const invThisMonth = (DB.invoices||[]).filter(i=>(i.invoice_date||'').startsWith(ym)).length;
+    const totalReg     = (DB.registrations||[]).length;
+    const pendingReg   = (DB.invoices||[]).filter(i=>!i.registration_id).length;
+    const delScheduled = (DB.deliveries||[]).filter(d=>d.status!=='Delivered').length;
+    // ── MY (individual SA) performance ──
+    const myInvAll     = (DB.invoices||[]).filter(i=>i.created_by===curUser);
+    const myInvMTD     = myInvAll.filter(i=>(i.invoice_date||'').startsWith(ym));
+    const myRegAll     = (DB.registrations||[]).filter(r=>r.registered_by===curUser);
+    const myRegMTD     = myRegAll.filter(r=>(r.registration_date||'').startsWith(ym));
+    const otherSAs     = ['Nourhan Walid','Francis de Castro Escueta'].filter(n=>n!==curUser);
+    const otherInvMTD  = otherSAs.map(n=>({
+      name: n.split(' ')[0],
+      inv:  (DB.invoices||[]).filter(i=>i.created_by===n&&(i.invoice_date||'').startsWith(ym)).length,
+      reg:  (DB.registrations||[]).filter(r=>r.registered_by===n&&(r.registration_date||'').startsWith(ym)).length,
+    }));
     return `
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:8px">
       <div>
@@ -1773,28 +1785,59 @@ dashboard(){
         <div class="sc blue"><div class="slbl">Finance Pending</div><div class="sval" style="color:var(--blue)">${pendFin}</div><div class="ssub">Awaiting approval</div><div class="sico">⏳</div></div>
       </div>
 
-      <!-- Row 2: Invoice & Registration strip -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-        <div class="card" style="text-align:center;padding:14px 10px;cursor:pointer;border-color:rgba(245,158,11,.3)" onclick="goTo('invoice')">
-          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">🧾 Invoiced MTD</div>
-          <div style="font-size:28px;font-weight:800;color:var(--amber);line-height:1">${invThisMonth}</div>
-          <div style="font-size:10px;color:var(--faint);margin-top:3px">${totalInv} total</div>
+      <!-- Row 2: My Individual Performance -->
+      <div class="card" style="margin-bottom:16px;border-color:rgba(245,158,11,.25)">
+        <div class="ch" style="margin-bottom:12px">
+          <div>
+            <div class="ct">📊 My Performance — ${new Date().toLocaleString('en-AE',{month:'long',year:'numeric'})}</div>
+            <div style="font-size:11px;color:var(--faint);margin-top:2px">${curUser}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-xs" onclick="goTo('invoice')">Invoices →</button>
+            <button class="btn btn-ghost btn-xs" onclick="goTo('registration')">Registrations →</button>
+          </div>
         </div>
-        <div class="card" style="text-align:center;padding:14px 10px;cursor:pointer;border-color:rgba(226,0,26,.2)" onclick="goTo('invoice')">
-          <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">⏳ Pending Registration</div>
-          <div style="font-size:28px;font-weight:800;color:var(--red);line-height:1">${pendingReg}</div>
-          <div style="font-size:10px;color:var(--faint);margin-top:3px">invoices awaiting reg</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+          <div style="background:var(--surface2);border-radius:10px;padding:14px 12px;text-align:center;border:1px solid rgba(245,158,11,.2)">
+            <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">🧾 My Invoices MTD</div>
+            <div style="font-size:30px;font-weight:800;color:var(--amber);line-height:1">${myInvMTD.length}</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:4px">${myInvAll.length} total all time</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:14px 12px;text-align:center;border:1px solid rgba(34,197,94,.2)">
+            <div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">🪪 My Registrations MTD</div>
+            <div style="font-size:30px;font-weight:800;color:var(--green);line-height:1">${myRegMTD.length}</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:4px">${myRegAll.length} total all time</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:14px 12px;text-align:center;border:1px solid rgba(226,0,26,.15)">
+            <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">⏳ Pending Registration</div>
+            <div style="font-size:30px;font-weight:800;color:var(--red);line-height:1">${pendingReg}</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:4px">awaiting action</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:14px 12px;text-align:center;border:1px solid rgba(59,130,246,.15)">
+            <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">🚗 Deliveries Scheduled</div>
+            <div style="font-size:30px;font-weight:800;color:var(--blue);line-height:1">${delScheduled}</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:4px">upcoming</div>
+          </div>
         </div>
-        <div class="card" style="text-align:center;padding:14px 10px;cursor:pointer;border-color:rgba(34,197,94,.2)" onclick="goTo('registration')">
-          <div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">🪪 Registered Total</div>
-          <div style="font-size:28px;font-weight:800;color:var(--green);line-height:1">${totalReg}</div>
-          <div style="font-size:10px;color:var(--faint);margin-top:3px">completed</div>
-        </div>
-        <div class="card" style="text-align:center;padding:14px 10px;cursor:pointer;border-color:rgba(59,130,246,.2)" onclick="goTo('delivery')">
-          <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">🚗 Deliveries Scheduled</div>
-          <div style="font-size:28px;font-weight:800;color:var(--blue);line-height:1">${delScheduled}</div>
-          <div style="font-size:10px;color:var(--faint);margin-top:3px">upcoming</div>
-        </div>
+        <!-- SA Comparison -->
+        ${otherInvMTD.length ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Team Comparison — ${new Date().toLocaleString('en-AE',{month:'long'})}</div>
+          <div style="display:grid;grid-template-columns:repeat(${otherInvMTD.length+1},1fr);gap:8px">
+            <div style="background:var(--surface);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--red)">
+              <div style="font-size:10px;font-weight:700;color:var(--white);margin-bottom:6px">${curUser.split(' ')[0]} 👤</div>
+              <div style="display:flex;justify-content:center;gap:12px">
+                <div><div style="font-size:18px;font-weight:800;color:var(--amber)">${myInvMTD.length}</div><div style="font-size:9px;color:var(--faint)">inv</div></div>
+                <div><div style="font-size:18px;font-weight:800;color:var(--green)">${myRegMTD.length}</div><div style="font-size:9px;color:var(--faint)">reg</div></div>
+              </div>
+            </div>
+            ${otherInvMTD.map(o=>'<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">'
+              +'<div style="font-size:10px;font-weight:600;color:var(--dim);margin-bottom:6px">'+o.name+'</div>'
+              +'<div style="display:flex;justify-content:center;gap:12px">'
+              +'<div><div style="font-size:18px;font-weight:800;color:var(--amber)">'+o.inv+'</div><div style="font-size:9px;color:var(--faint)">inv</div></div>'
+              +'<div><div style="font-size:18px;font-weight:800;color:var(--green)">'+o.reg+'</div><div style="font-size:9px;color:var(--faint)">reg</div></div>'
+              +'</div></div>').join('')}
+          </div>
+        </div>` : ''}
       </div>
 
     <div class="g2" style="margin-bottom:16px">
@@ -4670,6 +4713,198 @@ function saveRoster(){ doSaveRoster(); }
 function saveMonthRoster(){ doSaveRoster(); }
 function onMonthRosterChange(sel){ onRosterChange(sel); }
 function doSaveRoster_local(){}
+
+
+// ══════════════════════════════════════
+// INVOICE UPLOAD
+// ══════════════════════════════════════
+function handleInvDrop(e){
+  e.preventDefault();
+  document.getElementById('inv-zone')?.classList.remove('upzone-active');
+  const file = e.dataTransfer.files[0];
+  if(file) processInvFile(file);
+}
+function handleInvFile(input){
+  const file = input.files[0];
+  if(file) processInvFile(file);
+}
+
+function processInvFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','csv'].includes(ext)){
+    document.getElementById('inv-preview').innerHTML = '<div class="up-err">❌ Please use .xlsx, .xls or .csv</div>';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      let rows = [];
+      if(ext === 'csv'){
+        rows = parseCSV(e.target.result);
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      }
+      if(!rows.length){ document.getElementById('inv-preview').innerHTML = '<div class="up-err">❌ File is empty</div>'; return; }
+      showInvPreview(rows, file.name);
+    } catch(err){
+      document.getElementById('inv-preview').innerHTML = '<div class="up-err">❌ Error reading file: '+err.message+'</div>';
+    }
+  };
+  if(ext==='csv') reader.readAsText(file,'latin1');
+  else reader.readAsBinaryString(file);
+}
+
+function showInvPreview(rows, filename){
+  // Detect column names flexibly
+  const sample = rows[0];
+  const cols = Object.keys(sample);
+
+  // Column mapping — try multiple possible header names
+  const findCol = (...names) => names.find(n => cols.find(c => c.toLowerCase().includes(n.toLowerCase())));
+  const colVIN    = findCol('vin','chassis');
+  const colInvNo  = findCol('invoice number','invoice no','inv no','invoice#','document number','doc no');
+  const colInvDt  = findCol('invoice date','date','inv date','document date');
+  const colCust   = findCol('customer','client','buyer');
+  const colVSB    = findCol('vsb','vsb no','vsb number');
+  const colAmt    = findCol('amount','value','total','price');
+  const colSE     = findCol('sales exec','se name','salesperson','user');
+
+  const missingCols = [];
+  if(!colVIN)   missingCols.push('VIN');
+  if(!colInvNo) missingCols.push('Invoice Number');
+  if(!colInvDt) missingCols.push('Invoice Date');
+
+  // Count matches against existing bookings
+  const matched   = rows.filter(r => r[colVIN] && DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
+  const unmatched = rows.filter(r => !r[colVIN] || !DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
+  const alreadyInv= matched.filter(r => {
+    const bk = DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim());
+    return bk && bk.deal === 'Invoiced';
+  });
+
+  const preview = document.getElementById('inv-preview');
+  preview.innerHTML = `
+    <div class="up-preview" style="margin-top:12px">
+      <div class="up-prev-head">
+        <div>
+          <div class="up-prev-title">📄 ${filename}</div>
+          <div class="up-prev-sub">${rows.length} invoice rows detected</div>
+        </div>
+        <span class="badge ${missingCols.length?'br':'bg'}">${missingCols.length?'Check columns':'Ready'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;background:var(--surface2)">
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;color:var(--green)">${matched.length - alreadyInv.length}</div>
+          <div style="font-size:10px;color:var(--faint)">Will be invoiced</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;color:var(--amber)">${alreadyInv.length}</div>
+          <div style="font-size:10px;color:var(--faint)">Already invoiced</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;color:var(--faint)">${unmatched.length}</div>
+          <div style="font-size:10px;color:var(--faint)">No VIN match</div>
+        </div>
+      </div>
+      ${missingCols.length ? `<div class="up-err">⚠️ Missing columns: ${missingCols.join(', ')} — check your file headers</div>` : ''}
+      ${(matched.length - alreadyInv.length) > 0
+        ? `<div class="up-ok">✅ ${matched.length - alreadyInv.length} bookings ready to be marked as Invoiced</div>`
+        : '<div class="up-err">No new bookings to invoice</div>'}
+      <div class="up-actions">
+        <span class="up-count">${rows.length} rows · matched by VIN</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-preview').innerHTML='';document.getElementById('inv-file').value=''">✕ Clear</button>
+          <button class="btn btn-sm" style="background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.4)"
+            ${missingCols.length || (matched.length-alreadyInv.length)===0 ? 'disabled style="opacity:.4"' : ''}
+            onclick="doImportInvoices(${JSON.stringify(rows).replace(/"/g,'&quot;')}, '${colVIN}','${colInvNo}','${colInvDt}','${colCust||''}','${colVSB||''}','${colAmt||''}','${colSE||''}')">
+            🧾 Import ${matched.length-alreadyInv.length} Invoices
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doImportInvoices(rows, colVIN, colInvNo, colInvDt, colCust, colVSB, colAmt, colSE){
+  let done=0, skipped=0, failed=0;
+  const now = new Date().toISOString();
+
+  for(const r of rows){
+    const vin = r[colVIN]?.toString().trim();
+    if(!vin) continue;
+
+    const bk = DB.bookings.find(b => b.vin && b.vin.trim()===vin);
+    if(!bk){ skipped++; continue; }
+    if(bk.deal==='Invoiced' || bk.deal==='Delivered'){ skipped++; continue; }
+
+    const invNo  = r[colInvNo]?.toString().trim()  || 'INV-'+Date.now();
+    const invDt  = (() => {
+      const raw = r[colInvDt]?.toString().trim() || '';
+      if(!raw) return new Date().toISOString().split('T')[0];
+      // Handle Excel date serial numbers
+      if(!isNaN(raw) && Number(raw) > 40000){
+        const d = new Date(Math.round((Number(raw)-25569)*86400*1000));
+        return d.toISOString().split('T')[0];
+      }
+      const parts = raw.split(/[\/\-]/);
+      if(parts.length===3){
+        const [a,b2,c] = parts;
+        if(c.length===4) return c+'-'+b2.padStart(2,'0')+'-'+a.padStart(2,'0');
+        if(a.length===4) return a+'-'+b2.padStart(2,'0')+'-'+c.padStart(2,'0');
+      }
+      return raw;
+    })();
+
+    const invRecord = {
+      booking_id:         bk.id,
+      invoice_no:         invNo,
+      invoice_date:       invDt,
+      customer:           r[colCust]?.toString().trim() || bk.customer,
+      model:              bk.model,
+      model_year:         bk.model_year || null,
+      color:              bk.color || null,
+      vin:                vin,
+      vsb_no:             r[colVSB]?.toString().trim() || bk.vsb_no || null,
+      se:                 r[colSE]?.toString().trim()  || bk.se,
+      amount:             r[colAmt] ? parseFloat(r[colAmt].toString().replace(/[^0-9.]/g,''))||null : null,
+      created_by:         curUser,
+      created_at:         now,
+      delivery_scheduled: false,
+      registration_id:    null,
+    };
+
+    // Check invoice table has amount column, if not skip it
+    const {error: invErr} = await supa.from('invoices').insert([invRecord]);
+    if(invErr){
+      // Try without amount column (may not exist in older schema)
+      delete invRecord.amount;
+      const {error: invErr2} = await supa.from('invoices').insert([invRecord]);
+      if(invErr2){ failed++; console.error('Invoice insert failed:', invErr2.message); continue; }
+    }
+
+    // Update booking to Invoiced
+    await supa.from('bookings').update({deal:'Invoiced'}).eq('id', bk.id);
+
+    // Notify SE
+    await supa.from('notifications').insert([{
+      title: '🧾 Invoiced — '+bk.id,
+      body:  bk.customer+' — '+bk.model+' ('+invNo+')',
+      type:  'deal', target_role:'se', read:false, booking_id:bk.id
+    }]);
+
+    done++;
+  }
+
+  addUploadHistory('invoices', 'Invoice Upload', done, done+' invoiced, '+skipped+' skipped');
+  toast('Invoice import complete — '+done+' invoiced, '+skipped+' skipped'+(failed?' · '+failed+' failed':''), done?'ok':'warn');
+  if(done > 0){
+    await loadAll();
+    document.getElementById('inv-preview').innerHTML = '';
+    document.getElementById('inv-file').value = '';
+    goTo('invoice');
+  }
+}
 
 
 // ══════════════════════════════════════
