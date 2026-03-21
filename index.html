@@ -4952,6 +4952,10 @@ function doSaveRoster_local(){}
 // ══════════════════════════════════════
 // INVOICE UPLOAD
 // ══════════════════════════════════════
+function setBulkSA(sa){
+  document.querySelectorAll('.inv-sa-row').forEach(sel => sel.value = sa);
+}
+
 function handleInvDrop(e){
   e.preventDefault();
   document.getElementById('inv-zone')?.classList.remove('upzone-active');
@@ -5012,7 +5016,11 @@ function showInvPreview(rows, filename){
   const vinRows    = rows.filter(r => r[colVIN]?.toString().trim());
   const matched    = vinRows.filter(r => DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
   const unmatched  = vinRows.filter(r => !DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
-  const alreadyInv = matched.filter(r => { const bk=DB.bookings.find(b=>b.vin&&b.vin.trim()===r[colVIN].toString().trim()); return bk&&(bk.deal==='Invoiced'||bk.deal==='Delivered'); });
+  // Check for duplicate invoice records (same invoice_no already in DB)
+  const alreadyInv = matched.filter(r => {
+    const invNo = r[colInvNo]?.toString().trim();
+    return invNo && (DB.invoices||[]).find(i=>i.invoice_no===invNo);
+  });
   const toUpdate   = matched.length - alreadyInv.length;
   const toCreate   = unmatched.length; // will create new booking + invoice
   const toImport   = toUpdate + toCreate;
@@ -5059,7 +5067,7 @@ function showInvPreview(rows, filename){
         </select>
       </div>
 
-      ${toImport>0?`<div class="up-ok">✅ ${toUpdate} existing bookings + ${toCreate} new bookings will be invoiced</div>`:'<div class="up-err">No new invoices to import — all VINs already invoiced</div>'}
+      ${toImport>0?`<div class="up-ok">✅ ${toUpdate} bookings to invoice + ${toCreate} new bookings to create</div>`:`<div class="up-err">All invoice numbers already exist in the system</div>`}
       <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"><div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">Assign SA Credit</div><select id="inv-sa-credit" class="fc" style="width:220px;font-size:12px"><option value="">Assign to SA (optional)</option><option value="Nourhan Walid">Nourhan Walid</option><option value="Francis de Castro Escueta">Francis de Castro Escueta</option></select><div style="font-size:10px;color:var(--faint);margin-top:5px">SA gets credit for processing these invoices</div></div>
       <div class="up-actions">
         <span class="up-count">${rows.length} rows · matched by VIN</span>
@@ -5079,17 +5087,24 @@ function showInvPreview(rows, filename){
 async function doImportInvoices(){
   const rows   = window._invRows;
   const c      = window._invCols;
-  const saCredit = document.getElementById('inv-sa-assign')?.value ||
-                   document.getElementById('inv-sa-credit')?.value || '';
+  // Read per-row SA assignments from the preview table
+  const saRowEls = document.querySelectorAll('.inv-sa-row');
+  const saPerRow = {};
+  saRowEls.forEach(el => { saPerRow[el.dataset.idx] = el.value || ''; });
+  // Fallback bulk assign
+  const saBulk = document.getElementById('inv-sa-bulk')?.value || '';
   if(!rows || !c){ toast('No file loaded','warn'); return; }
 
   let invoiced=0, created=0, skipped=0, failed=0;
   const now = new Date().toISOString();
   const today = now.split('T')[0];
 
+  let rowIdx = 0;
   for(const r of rows){
     const vin = r[c.colVIN]?.toString().trim();
-    if(!vin) continue;
+    if(!vin){ rowIdx++; continue; }
+    const saCredit = saPerRow[rowIdx] || saBulk || '';
+    rowIdx++;
 
     const invNo  = r[c.colInvNo]?.toString().trim() || ('INV-'+Date.now());
     const invDt  = (()=>{
@@ -5154,14 +5169,16 @@ async function doImportInvoices(){
       bk = {id: newBkId, customer, model, vin, se};
       created++;
     } else {
-      // Existing booking — skip if already invoiced
-      if(bk.deal==='Invoiced'||bk.deal==='Delivered'){ skipped++; continue; }
-      // Mark existing booking as Invoiced
-      await supa.from('bookings').update({deal:'Invoiced'}).eq('id', bk.id);
+      // Existing booking — update deal to Invoiced if not already
+      if(bk.deal!=='Invoiced'&&bk.deal!=='Delivered'){
+        await supa.from('bookings').update({deal:'Invoiced'}).eq('id', bk.id);
+      }
       invoiced++;
     }
 
-    // ── Create invoice record ──
+    // ── Create invoice record (skip if invoice_no already exists) ──
+    const existingInv = (DB.invoices||[]).find(i=>i.invoice_no===invNo || (i.vin===vin && i.booking_id===bk.id));
+    if(existingInv){ skipped++; continue; }
     const invRecord = {
       booking_id:         bk.id,
       invoice_no:         invNo,
@@ -5180,16 +5197,31 @@ async function doImportInvoices(){
       registration_id:    null,
     };
 
-    // Try with all fields, fallback without optional ones
-    let {error: invErr} = await supa.from('invoices').insert([invRecord]);
-    if(invErr){
-      const safe = {booking_id:invRecord.booking_id, invoice_no:invRecord.invoice_no,
-        invoice_date:invRecord.invoice_date, customer:invRecord.customer,
-        model:invRecord.model, vin:invRecord.vin, se:invRecord.se,
-        created_by:invRecord.created_by, created_at:invRecord.created_at,
-        delivery_scheduled:false, registration_id:null};
-      const {error: invErr2} = await supa.from('invoices').insert([safe]);
-      if(invErr2){ console.error('Invoice insert failed:', invErr2.message); }
+    // Check if invoice already exists by invoice_no — update if so, insert if not
+    const existing = DB.invoices.find(i => i.invoice_no === invNo || i.booking_id === bk.id);
+    if(existing){
+      // Update existing invoice record with fresh data
+      await supa.from('invoices').update({
+        invoice_date: invRecord.invoice_date,
+        customer:     invRecord.customer,
+        model:        invRecord.model,
+        vin:          invRecord.vin,
+        vsb_no:       invRecord.vsb_no,
+        se:           invRecord.se,
+        sa_processed_by: invRecord.sa_processed_by,
+      }).eq('id', existing.id);
+    } else {
+      // Insert new invoice — try full record, fallback to minimal
+      let {error: invErr} = await supa.from('invoices').insert([invRecord]);
+      if(invErr){
+        const safe = {booking_id:invRecord.booking_id, invoice_no:invRecord.invoice_no,
+          invoice_date:invRecord.invoice_date, customer:invRecord.customer,
+          model:invRecord.model, vin:invRecord.vin, se:invRecord.se,
+          created_by:invRecord.created_by, created_at:invRecord.created_at,
+          delivery_scheduled:false, registration_id:null};
+        const {error: invErr2} = await supa.from('invoices').insert([safe]);
+        if(invErr2){ console.error('Invoice insert failed:', invErr2.message); }
+      }
     }
 
     // Notify SE
