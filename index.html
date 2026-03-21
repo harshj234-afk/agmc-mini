@@ -1268,6 +1268,7 @@ const NAV={
     {l:'Deal Progress',     i:'💼',p:'deals'},
     {l:'Flags',             i:'🚩',p:'flags'},
     {l:'Demo Cars',         i:'🏎', p:'demo'},
+    {l:'My Work Log',       i:'📒',p:'worklog'},
   ],
   pg:[
     {l:'Dashboard',         i:'◉', p:'dashboard'},
@@ -1773,7 +1774,10 @@ dashboard(){
         <div style="font-size:24px;font-weight:800;color:var(--white);margin-top:2px">${curUser}</div>
         <div style="font-size:11px;color:var(--faint);margin-top:2px">${todayStr}</div>
       </div>
-      <button class="btn btn-red" onclick="goTo('upload')">📤 Morning Upload →</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="goTo('worklog')">📒 My Work Log →</button>
+        <button class="btn btn-red" onclick="goTo('upload')">📤 Morning Upload →</button>
+      </div>
     </div>
     ${showroomTargetWidget(false)}
 
@@ -2862,6 +2866,134 @@ updates(){
   `;
 },
 
+worklog(){
+  const ym = new Date().toISOString().slice(0,7);
+  const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  // My invoices (credited to me via sa_processed_by)
+  const myInv = (DB.invoices||[]).filter(i=>i.created_by===curUser || i.sa_processed_by===curUser);
+  const myInvMTD = myInv.filter(i=>(i.invoice_date||'').startsWith(ym));
+  // My registrations (registered_by = me)
+  const myReg = (DB.registrations||[]).filter(r=>r.registered_by===curUser);
+  const myRegMTD = myReg.filter(r=>(r.registration_date||'').startsWith(ym));
+
+  return `
+  <div class="shd">
+    <div class="sttl">📒 My Work Log</div>
+    <span class="badge ba">${monthLabel}</span>
+  </div>
+
+  <!-- MTD Summary -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+    <div class="card" style="text-align:center;padding:20px;border-color:rgba(245,158,11,.3)">
+      <div style="font-size:11px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🧾 Invoices Processed MTD</div>
+      <div style="font-size:44px;font-weight:800;color:var(--amber);line-height:1">${myInvMTD.length}</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:6px">${myInv.length} total all time</div>
+    </div>
+    <div class="card" style="text-align:center;padding:20px;border-color:rgba(34,197,94,.3)">
+      <div style="font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🪪 Registrations Done MTD</div>
+      <div style="font-size:44px;font-weight:800;color:var(--green);line-height:1">${myRegMTD.length}</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:6px">${myReg.length} total all time</div>
+    </div>
+  </div>
+
+  <!-- Invoices Table -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch">
+      <div class="ct">🧾 Invoices Credited to Me</div>
+      <span class="badge ba">${myInv.length}</span>
+    </div>
+    ${myInv.length?`<table class="tbl"><thead><tr>
+      <th>Invoice No</th><th>Customer</th><th>Model</th><th>SE</th><th>Date</th><th>Status</th>
+    </tr></thead><tbody>
+      ${myInv.map(i=>`<tr>
+        <td class="tm tb">${i.invoice_no||'—'}</td>
+        <td class="tb">${i.customer||'—'}</td>
+        <td style="font-size:11px">${i.model||'—'}</td>
+        <td style="font-size:11px">${(i.se||'').split(' ')[0]}</td>
+        <td class="tm" style="font-size:11px">${i.invoice_date||'—'}</td>
+        <td>${i.registration_id?'<span class="badge bg">Registered</span>':'<span class="badge ba">Invoiced</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table>`:`<div class="empty"><div class="empty-ico">🧾</div><p>No invoices credited to you yet</p><p style="font-size:11px;color:var(--faint)">Admin assigns invoice credit during upload</p></div>`}
+  </div>
+
+  <!-- Registrations Table -->
+  <div class="card">
+    <div class="ch">
+      <div class="ct">🪪 Registrations Done by Me</div>
+      <span class="badge bg">${myReg.length}</span>
+    </div>
+    ${myReg.length?`<table class="tbl"><thead><tr>
+      <th>Plate No</th><th>Customer</th><th>Model</th><th>SE</th><th>Date</th>
+    </tr></thead><tbody>
+      ${myReg.map(r=>`<tr>
+        <td class="tb" style="font-weight:700;color:var(--white)">${r.plate_number||'—'}</td>
+        <td class="tb">${r.customer||'—'}</td>
+        <td style="font-size:11px">${r.model||'—'}</td>
+        <td style="font-size:11px">${(r.se||'').split(' ')[0]}</td>
+        <td class="tm" style="font-size:11px">${r.registration_date||'—'}</td>
+      </tr>`).join('')}
+    </tbody></table>`:`<div class="empty"><div class="empty-ico">🪪</div><p>No registrations yet</p></div>`}
+  </div>`;
+},
+
+salog(){
+  const ym=new Date().toISOString().slice(0,7);
+  const ml=new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
+  const myInv=(DB.invoices||[]).filter(i=>i.processed_by===curUser||(!i.processed_by&&i.created_by===curUser));
+  const myInvMTD=myInv.filter(i=>(i.invoice_date||'').startsWith(ym));
+  const myReg=(DB.registrations||[]).filter(r=>r.registered_by===curUser);
+  const myRegMTD=myReg.filter(r=>(r.registration_date||'').startsWith(ym));
+  const pendReg=(DB.invoices||[]).filter(i=>!i.registration_id);
+  return `
+  <div class="shd"><div class="sttl">My Work Log</div><span class="badge ba">${ml}</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+    <div class="card" style="text-align:center;padding:20px 12px;border-color:rgba(245,158,11,.3)">
+      <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Invoices Processed MTD</div>
+      <div style="font-size:40px;font-weight:800;color:var(--amber);line-height:1">${myInvMTD.length}</div>
+      <div style="font-size:10px;color:var(--faint);margin-top:6px">${myInv.length} all time</div>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 12px;border-color:rgba(34,197,94,.3)">
+      <div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Registrations Done MTD</div>
+      <div style="font-size:40px;font-weight:800;color:var(--green);line-height:1">${myRegMTD.length}</div>
+      <div style="font-size:10px;color:var(--faint);margin-top:6px">${myReg.length} all time</div>
+    </div>
+    <div class="card" style="text-align:center;padding:20px 12px;cursor:pointer;border-color:rgba(226,0,26,.2)" onclick="goTo('registration')">
+      <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Pending Registration</div>
+      <div style="font-size:40px;font-weight:800;color:var(--red);line-height:1">${pendReg.length}</div>
+      <div style="font-size:10px;color:var(--faint);margin-top:6px">tap to action</div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><div class="ct">Log My Work</div></div>
+    <div style="display:flex;gap:10px;padding:4px 0 8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="color:var(--green);border-color:rgba(34,197,94,.3)" onclick="openLogRegModal()">+ Log Registration</button>
+      <button class="btn btn-ghost" onclick="goTo('registration')">View All Pending</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="ch"><div class="ct">My Invoices — ${ml}</div><span class="badge ba">${myInvMTD.length}</span></div>
+    ${myInvMTD.length?`<table class="tbl"><thead><tr><th>Invoice No</th><th>Customer</th><th>Model</th><th>SE</th><th>Date</th><th>Status</th></tr></thead><tbody>
+      ${myInvMTD.map(i=>`<tr>
+        <td class="tb tm">${i.invoice_no||i.id}</td><td class="tb">${i.customer}</td>
+        <td style="font-size:11px">${i.model}</td><td style="font-size:11px">${(i.se||'').split(' ')[0]}</td>
+        <td class="tm" style="font-size:11px">${i.invoice_date||'—'}</td>
+        <td>${i.registration_id?'<span class="badge bg">Registered</span>':'<span class="badge br">Pending</span>'}</td>
+      </tr>`).join('')}</tbody></table>`
+    :'<div class="empty"><div class="empty-ico">🧾</div><p>No invoices this month</p></div>'}
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ct">My Registrations — ${ml}</div><span class="badge bg">${myRegMTD.length}</span></div>
+    ${myRegMTD.length?`<table class="tbl"><thead><tr><th>Plate No</th><th>Customer</th><th>Model</th><th>SE</th><th>Date</th></tr></thead><tbody>
+      ${myRegMTD.map(r=>`<tr>
+        <td class="tb" style="font-weight:700;color:var(--white)">${r.plate_number||'—'}</td>
+        <td class="tb">${r.customer||'—'}</td><td style="font-size:11px">${r.model||'—'}</td>
+        <td style="font-size:11px">${(r.se||'').split(' ')[0]}</td>
+        <td class="tm" style="font-size:11px">${r.registration_date||'—'}</td>
+      </tr>`).join('')}</tbody></table>`
+    :'<div class="empty"><div class="empty-ico">💪</div><p>No registrations this month</p></div>'}
+  </div>`;
+},
+
 invoice(){
   const inv = DB.invoices || [];
   const canAct = ['se','sa','admin','ss'].includes(curRole);
@@ -2891,6 +3023,8 @@ invoice(){
             <button class="btn btn-ghost btn-xs" onclick="openInvoiceDetailModal('${inv.id}')">View</button>
             ${(curRole==='se'||curRole==='sa'||curRole==='admin')&&!inv.delivery_scheduled?`<button class="btn btn-green btn-xs" onclick="openScheduleDeliveryFromInvoice('${inv.id}')">🚗 Schedule</button>`:''}
             ${(curRole==='sa'||curRole==='admin')&&!inv.registration_id?`<button class="btn btn-blue btn-xs" onclick="openRegistrationModal('${inv.id}')">🪪 Register</button>`:''}
+            ${curRole==='admin'?`<button class="btn btn-ghost btn-xs" onclick="openAssignSAModal('${inv.id}','${inv.sa_processed_by||''}')">👤 SA</button>`:''}
+
           </div></td>
         </tr>`).join('')}
       </tbody>
@@ -2978,6 +3112,50 @@ performance(){
 },
 };
 
+// ══════════════════════════════════════
+// SA WORK LOG
+// ══════════════════════════════════════
+async function doAssignSA(invId){
+  const sa=document.getElementById('assign-sa')?.value||null;
+  const {error}=await supa.from('invoices').update({processed_by:sa}).eq('id',invId);
+  if(error){toast('Error: '+error.message,'err');return;}
+  closeM(); toast('SA credit '+(sa?'assigned to '+sa.split(' ')[0]:'removed')+' ✓','ok');
+  await loadAll(); goTo('invoice');
+}
+function openLogRegModal(){
+  const pending=(DB.invoices||[]).filter(i=>!i.registration_id);
+  if(!pending.length){toast('No invoices pending registration','warn');return;}
+  openM('Log Registration Done',
+    '<div class="fg"><label>Invoice</label><select class="fc" id="lr-inv"><option value="">Select</option>'
+    +pending.map(i=>'<option value="'+i.id+'">'+i.customer+' — '+(i.invoice_no||i.id)+'</option>').join('')
+    +'</select></div>'
+    +'<div class="fr c2"><div class="fg"><label>Plate Number</label>'
+    +'<input class="fc" id="lr-plate" placeholder="A 12345" style="text-transform:uppercase;font-weight:700;font-size:15px;letter-spacing:2px"/></div>'
+    +'<div class="fg"><label>Reg Date</label>'
+    +'<input type="date" class="fc" id="lr-date" value="'+new Date().toISOString().split('T')[0]+'"/></div></div>',
+    '<button class="btn btn-ghost" onclick="closeM()">Cancel</button>'
+    +'<button class="btn btn-green" onclick="doLogRegistration()">Save Registration</button>'
+  );
+}
+async function doLogRegistration(){
+  const invId=document.getElementById('lr-inv')?.value;
+  const plate=(document.getElementById('lr-plate')?.value||'').trim().toUpperCase();
+  const date=document.getElementById('lr-date')?.value;
+  if(!invId){toast('Select an invoice','warn');return;}
+  if(!plate){toast('Plate number required','warn');return;}
+  const inv=DB.invoices.find(x=>x.id===invId); if(!inv) return;
+  const {data:reg,error}=await supa.from('registrations').insert([{
+    invoice_id:invId,booking_id:inv.booking_id,invoice_no:inv.invoice_no,
+    plate_number:plate,registration_date:date,customer:inv.customer,
+    model:inv.model,model_year:inv.model_year||null,se:inv.se,
+    registered_by:curUser,created_at:new Date().toISOString()
+  }]).select().single();
+  if(error){toast('Error: '+error.message,'err');return;}
+  await supa.from('invoices').update({registration_id:reg.id}).eq('id',invId);
+  if(inv.booking_id) await supa.from('bookings').update({deal:'Registered'}).eq('id',inv.booking_id);
+  closeM(); toast('Registration logged ✓ Plate: '+plate,'ok');
+  await loadAll(); goTo('salog');
+}
 // ══════════════════════════════════════
 // DB ACTIONS
 // ══════════════════════════════════════
@@ -3320,6 +3498,30 @@ async function doSaveDailyUpdate(bookingId){
 // ══════════════════════════════════════
 // INVOICE
 // ══════════════════════════════════════
+function openAssignSAModal(invoiceId, currentSA){
+  openM('👤 Assign SA Credit',`
+    <div style="font-size:12px;color:var(--dim);margin-bottom:14px">Assign processing credit for this invoice to a Sales Assistant. This will appear in their Work Log.</div>
+    <div class="fg"><label>Sales Assistant</label>
+      <select class="fc" id="sa-assign-sel">
+        <option value="">— None —</option>
+        ${['Nourhan Walid','Francis de Castro Escueta'].map(sa=>`<option value="${sa}" ${sa===currentSA?'selected':''}>${sa}</option>`).join('')}
+      </select>
+    </div>
+  `,`
+    <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+    <button class="btn btn-red" onclick="doAssignSACredit('${invoiceId}')">Save</button>
+  `);
+}
+
+async function doAssignSACredit(invoiceId){
+  const sa = document.getElementById('sa-assign-sel')?.value||null;
+  const {error} = await supa.from('invoices').update({sa_processed_by:sa}).eq('id',invoiceId);
+  if(error){ toast('Error: '+error.message,'err'); return; }
+  closeM();
+  toast('SA credit assigned'+(sa?' to '+sa.split(' ')[0]:'removed'),'ok');
+  await loadAll(); goTo('invoice');
+}
+
 function openInvoiceModal(bookingId){
   const b = DB.bookings.find(x=>x.id===bookingId); if(!b) return;
   const today = new Date().toISOString().split('T')[0];
@@ -4757,32 +4959,30 @@ function processInvFile(file){
 }
 
 function showInvPreview(rows, filename){
-  // Detect column names flexibly
   const sample = rows[0];
-  const cols = Object.keys(sample);
-
-  // Column mapping — try multiple possible header names
+  const cols   = Object.keys(sample);
   const findCol = (...names) => names.find(n => cols.find(c => c.toLowerCase().includes(n.toLowerCase())));
-  const colVIN    = findCol('vin','chassis');
-  const colInvNo  = findCol('invoice number','invoice no','inv no','invoice#','document number','doc no');
-  const colInvDt  = findCol('invoice date','date','inv date','document date');
-  const colCust   = findCol('customer','client','buyer');
-  const colVSB    = findCol('vsb','vsb no','vsb number');
-  const colAmt    = findCol('amount','value','total','price');
-  const colSE     = findCol('sales exec','se name','salesperson','user');
+  const colVIN   = findCol('vin','chassis');
+  const colInvNo = findCol('invoice number','invoice no','inv no','invoice#','document number','doc no');
+  const colInvDt = findCol('invoice date','date','inv date','document date');
+  const colCust  = findCol('customer','client','buyer');
+  const colVSB   = findCol('vsb','vsb no','vsb number');
+  const colAmt   = findCol('amount','value','total','price');
+  const colSE    = findCol('sales exec','se name','salesperson','user');
 
   const missingCols = [];
   if(!colVIN)   missingCols.push('VIN');
   if(!colInvNo) missingCols.push('Invoice Number');
   if(!colInvDt) missingCols.push('Invoice Date');
 
-  // Count matches against existing bookings
-  const matched   = rows.filter(r => r[colVIN] && DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
-  const unmatched = rows.filter(r => !r[colVIN] || !DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
-  const alreadyInv= matched.filter(r => {
-    const bk = DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim());
-    return bk && bk.deal === 'Invoiced';
-  });
+  const matched    = rows.filter(r => r[colVIN] && DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
+  const unmatched  = rows.filter(r => !r[colVIN] || !DB.bookings.find(b => b.vin && b.vin.trim()===r[colVIN].toString().trim()));
+  const alreadyInv = matched.filter(r => { const bk=DB.bookings.find(b=>b.vin&&b.vin.trim()===r[colVIN].toString().trim()); return bk&&bk.deal==='Invoiced'; });
+  const toImport   = matched.length - alreadyInv.length;
+
+  // Store detected cols globally for import
+  window._invCols = {colVIN,colInvNo,colInvDt,colCust,colVSB,colAmt,colSE};
+  window._invRows = rows;
 
   const preview = document.getElementById('inv-preview');
   preview.innerHTML = `
@@ -4790,13 +4990,13 @@ function showInvPreview(rows, filename){
       <div class="up-prev-head">
         <div>
           <div class="up-prev-title">📄 ${filename}</div>
-          <div class="up-prev-sub">${rows.length} invoice rows detected</div>
+          <div class="up-prev-sub">${rows.length} invoice rows · ${toImport} will be imported</div>
         </div>
         <span class="badge ${missingCols.length?'br':'bg'}">${missingCols.length?'Check columns':'Ready'}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;background:var(--surface2)">
         <div style="text-align:center">
-          <div style="font-size:22px;font-weight:800;color:var(--green)">${matched.length - alreadyInv.length}</div>
+          <div style="font-size:22px;font-weight:800;color:var(--green)">${toImport}</div>
           <div style="font-size:10px;color:var(--faint)">Will be invoiced</div>
         </div>
         <div style="text-align:center">
@@ -4808,51 +5008,58 @@ function showInvPreview(rows, filename){
           <div style="font-size:10px;color:var(--faint)">No VIN match</div>
         </div>
       </div>
-      ${missingCols.length ? `<div class="up-err">⚠️ Missing columns: ${missingCols.join(', ')} — check your file headers</div>` : ''}
-      ${(matched.length - alreadyInv.length) > 0
-        ? `<div class="up-ok">✅ ${matched.length - alreadyInv.length} bookings ready to be marked as Invoiced</div>`
-        : '<div class="up-err">No new bookings to invoice</div>'}
+      ${missingCols.length?`<div class="up-err">⚠️ Missing: ${missingCols.join(', ')}</div>`:''}
+
+      <!-- SA Credit Assignment -->
+      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--surface)">
+        <div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">👤 Assign Processing Credit to SA</div>
+        <div style="font-size:11px;color:var(--faint);margin-bottom:10px">Who processed these invoices? This credits them in their Work Log.</div>
+        <select class="fc" id="inv-sa-assign" style="max-width:280px">
+          <option value="">— Select Sales Assistant —</option>
+          ${['Nourhan Walid','Francis de Castro Escueta'].map(sa=>`<option value="${sa}">${sa}</option>`).join('')}
+        </select>
+      </div>
+
+      ${toImport>0?`<div class="up-ok">✅ ${toImport} bookings ready to be marked as Invoiced</div>`:'<div class="up-err">No new bookings to invoice</div>'}
+      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"><div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:8px">Assign SA Credit</div><select id="inv-sa-credit" class="fc" style="width:220px;font-size:12px"><option value="">Assign to SA (optional)</option><option value="Nourhan Walid">Nourhan Walid</option><option value="Francis de Castro Escueta">Francis de Castro Escueta</option></select><div style="font-size:10px;color:var(--faint);margin-top:5px">SA gets credit for processing these invoices</div></div>
       <div class="up-actions">
         <span class="up-count">${rows.length} rows · matched by VIN</span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-preview').innerHTML='';document.getElementById('inv-file').value=''">✕ Clear</button>
           <button class="btn btn-sm" style="background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.4)"
-            ${missingCols.length || (matched.length-alreadyInv.length)===0 ? 'disabled style="opacity:.4"' : ''}
-            onclick="doImportInvoices(${JSON.stringify(rows).replace(/"/g,'&quot;')}, '${colVIN}','${colInvNo}','${colInvDt}','${colCust||''}','${colVSB||''}','${colAmt||''}','${colSE||''}')">
-            🧾 Import ${matched.length-alreadyInv.length} Invoices
+            ${missingCols.length||toImport===0?'disabled style="opacity:.4"':''}
+            onclick="doImportInvoices()">
+            🧾 Import ${toImport} Invoices
           </button>
         </div>
       </div>
     </div>`;
 }
 
-async function doImportInvoices(rows, colVIN, colInvNo, colInvDt, colCust, colVSB, colAmt, colSE){
+
+async function doImportInvoices(){
+  const rows   = window._invRows;
+  const c      = window._invCols;
+  const saCredit = document.getElementById('inv-sa-assign')?.value || '';
+  if(!rows || !c){ toast('No file loaded','warn'); return; }
+
   let done=0, skipped=0, failed=0;
   const now = new Date().toISOString();
 
   for(const r of rows){
-    const vin = r[colVIN]?.toString().trim();
+    const vin = r[c.colVIN]?.toString().trim();
     if(!vin) continue;
-
     const bk = DB.bookings.find(b => b.vin && b.vin.trim()===vin);
     if(!bk){ skipped++; continue; }
-    if(bk.deal==='Invoiced' || bk.deal==='Delivered'){ skipped++; continue; }
+    if(bk.deal==='Invoiced'||bk.deal==='Delivered'){ skipped++; continue; }
 
-    const invNo  = r[colInvNo]?.toString().trim()  || 'INV-'+Date.now();
-    const invDt  = (() => {
-      const raw = r[colInvDt]?.toString().trim() || '';
-      if(!raw) return new Date().toISOString().split('T')[0];
-      // Handle Excel date serial numbers
-      if(!isNaN(raw) && Number(raw) > 40000){
-        const d = new Date(Math.round((Number(raw)-25569)*86400*1000));
-        return d.toISOString().split('T')[0];
-      }
-      const parts = raw.split(/[\/\-]/);
-      if(parts.length===3){
-        const [a,b2,c] = parts;
-        if(c.length===4) return c+'-'+b2.padStart(2,'0')+'-'+a.padStart(2,'0');
-        if(a.length===4) return a+'-'+b2.padStart(2,'0')+'-'+c.padStart(2,'0');
-      }
+    const invNo = r[c.colInvNo]?.toString().trim() || 'INV-'+Date.now();
+    const invDt = (()=>{
+      const raw = r[c.colInvDt]?.toString().trim()||'';
+      if(!raw) return now.split('T')[0];
+      if(!isNaN(raw)&&Number(raw)>40000){ const d=new Date(Math.round((Number(raw)-25569)*86400*1000)); return d.toISOString().split('T')[0]; }
+      const parts=raw.split(/[\/\-]/);
+      if(parts.length===3){ const[a,b2,cc]=parts; if(cc.length===4) return cc+'-'+b2.padStart(2,'0')+'-'+a.padStart(2,'0'); if(a.length===4) return a+'-'+b2.padStart(2,'0')+'-'+cc.padStart(2,'0'); }
       return raw;
     })();
 
@@ -4860,50 +5067,41 @@ async function doImportInvoices(rows, colVIN, colInvNo, colInvDt, colCust, colVS
       booking_id:         bk.id,
       invoice_no:         invNo,
       invoice_date:       invDt,
-      customer:           r[colCust]?.toString().trim() || bk.customer,
+      customer:           r[c.colCust]?.toString().trim()||bk.customer,
       model:              bk.model,
-      model_year:         bk.model_year || null,
-      color:              bk.color || null,
+      model_year:         bk.model_year||null,
+      color:              bk.color||null,
       vin:                vin,
-      vsb_no:             r[colVSB]?.toString().trim() || bk.vsb_no || null,
-      se:                 r[colSE]?.toString().trim()  || bk.se,
-      amount:             r[colAmt] ? parseFloat(r[colAmt].toString().replace(/[^0-9.]/g,''))||null : null,
+      vsb_no:             r[c.colVSB]?.toString().trim()||bk.vsb_no||null,
+      se:                 r[c.colSE]?.toString().trim()||bk.se,
       created_by:         curUser,
+      sa_processed_by:    saCredit||null,
       created_at:         now,
       delivery_scheduled: false,
       registration_id:    null,
     };
 
-    // Check invoice table has amount column, if not skip it
-    const {error: invErr} = await supa.from('invoices').insert([invRecord]);
-    if(invErr){
-      // Try without amount column (may not exist in older schema)
-      delete invRecord.amount;
-      const {error: invErr2} = await supa.from('invoices').insert([invRecord]);
-      if(invErr2){ failed++; console.error('Invoice insert failed:', invErr2.message); continue; }
+    // Try with sa_processed_by, fallback without
+    let {error} = await supa.from('invoices').insert([invRecord]);
+    if(error){
+      delete invRecord.sa_processed_by;
+      const {error:e2} = await supa.from('invoices').insert([invRecord]);
+      if(e2){ failed++; console.error(e2.message); continue; }
     }
 
-    // Update booking to Invoiced
-    await supa.from('bookings').update({deal:'Invoiced'}).eq('id', bk.id);
-
-    // Notify SE
+    await supa.from('bookings').update({deal:'Invoiced'}).eq('id',bk.id);
     await supa.from('notifications').insert([{
-      title: '🧾 Invoiced — '+bk.id,
-      body:  bk.customer+' — '+bk.model+' ('+invNo+')',
-      type:  'deal', target_role:'se', read:false, booking_id:bk.id
+      title:'🧾 Invoiced — '+bk.id,
+      body: bk.customer+' — '+bk.model+' ('+invNo+')',
+      type:'deal', target_role:'se', read:false, booking_id:bk.id
     }]);
-
     done++;
   }
 
-  addUploadHistory('invoices', 'Invoice Upload', done, done+' invoiced, '+skipped+' skipped');
-  toast('Invoice import complete — '+done+' invoiced, '+skipped+' skipped'+(failed?' · '+failed+' failed':''), done?'ok':'warn');
-  if(done > 0){
-    await loadAll();
-    document.getElementById('inv-preview').innerHTML = '';
-    document.getElementById('inv-file').value = '';
-    goTo('invoice');
-  }
+  addUploadHistory('invoices','Invoice Upload',done,done+' invoiced'+(saCredit?' · credited to '+saCredit.split(' ')[0]:''));
+  toast('Invoice import complete — '+done+' invoiced'+(failed?' · '+failed+' failed':'')+(saCredit?' · credited to '+saCredit.split(' ')[0]:''),'ok');
+  window._invRows=null; window._invCols=null;
+  if(done>0){ await loadAll(); document.getElementById('inv-preview').innerHTML=''; document.getElementById('inv-file').value=''; goTo('invoice'); }
 }
 
 
