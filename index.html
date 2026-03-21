@@ -1053,6 +1053,7 @@ async function loadAll(){
     se_overrides:           typeof t.se_overrides==='string'           ? JSON.parse(t.se_overrides||'{}')           : (t.se_overrides||{}),
     se_invoice_overrides:   typeof t.se_invoice_overrides==='string'   ? JSON.parse(t.se_invoice_overrides||'{}')   : (t.se_invoice_overrides||{}),
   }));
+  await loadRosterFromDB();
   console.log('Loaded:',DB.bookings.length,'bookings,',DB.enquiries.length,'enquiries,',DB.deliveries.length,'deliveries');
 }
 
@@ -1665,7 +1666,7 @@ dashboard(){
     const todayIdx = new Date().getDay();
     const myRoster = ROSTER_DATA.find(r=>r.name===curUser);
     const todayStatus = myRoster ? myRoster.days[todayIdx] : '—';
-    const statusColor = todayStatus==='ON'?'var(--green)':todayStatus==='OFF'?'var(--red)':todayStatus==='AM'||todayStatus==='PM'?'var(--amber)':'var(--dim)';
+    const statusColor = todayStatus==='9-6'?'var(--green)':todayStatus==='10-7'?'#34d399':todayStatus==='11-8'?'var(--amber)':todayStatus==='OFF'?'var(--red)':todayStatus==='CO'?'#f87171':'var(--dim)';
     return `
     <div class="shd">
       <div class="sttl">Welcome, ${curUser} 👋</div>
@@ -2491,9 +2492,10 @@ enquiries(){
   <div id="enq-results">
   ${myEnqs().map(e=>`<div class="eq-card" onclick="openEnqModal('${e.id}')">
     <div class="eq-top"><div><div class="eq-name">${e.customer}</div><div class="eq-model">${e.model} · ${e.interest}</div></div>
-    <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">${e.status==='Open'?'<span class="badge br">Open</span>':'<span class="badge bb">Follow-Up</span>'}${e.se==='Unassigned'?'<span class="badge bgr">Unassigned</span>':`<span class="badge bw">${e.se.split(' ')[0]}</span>`}</div></div>
-    <div class="eq-meta"><span>📅 ${e.date}</span><span>📌 ${e.source}</span><span>💬 ${e.notes}</span></div>
-  </div>`).join('')}`;
+    <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">${e.status==='Open'?'<span class="badge br">Open</span>':e.status==='Follow-Up'?'<span class="badge bb">Follow-Up</span>':'<span class="badge bg">Converted</span>'}${e.se==='Unassigned'?'<span class="badge bgr">Unassigned</span>':`<span class="badge bw">${e.se.split(' ')[0]}</span>`}</div></div>
+    <div class="eq-meta"><span>📅 ${e.date}</span><span>📌 ${e.source}</span>${e.test_drive?'<span class="badge bg" style="font-size:9px">🏎 Test Drive</span>':''}</div>
+  </div>`).join('')}
+  </div>`;
 },
 
 pdi(){
@@ -3018,7 +3020,8 @@ registration(){
 },
 
 performance(){
-  return `<div class="shd"><div class="sttl">Performance — March 2024</div></div>
+  const now2=new Date(); const perfMonth=now2.toLocaleString('en-AE',{month:'long',year:'numeric'});
+  return `<div class="shd"><div class="sttl">Performance — ${perfMonth}</div></div>
   <div class="sg"><div class="sc red"><div class="slbl">Bookings MTD</div><div class="sval" style="color:var(--red)">${DB.bookings.length}</div><div class="ssub">Target: 12</div></div>
   <div class="sc green"><div class="slbl">Deliveries MTD</div><div class="sval" style="color:var(--green)">${DB.bookings.filter(b=>b.deal==='Delivered').length}</div><div class="ssub">Target: 8</div></div>
   <div class="sc amber"><div class="slbl">Conversion Rate</div><div class="sval" style="color:var(--amber)">58%</div><div class="ssub">Enq → Booking</div></div>
@@ -4745,33 +4748,52 @@ async function saveMonthRoster(ym){
   const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
   const daysInMo = new Date(parseInt(ym.split('-')[0]), parseInt(ym.split('-')[1]), 0).getDate();
 
-  // First probe: check if month column exists
+  // Probe schema
   const {data:probe} = await supa.from('roster').select('*').limit(1);
   const hasMonth = probe && probe.length > 0 && 'month' in probe[0];
 
   let saved=0, failed=0, lastErr='';
   for(const p of ROSTER_DATA){
     const days = mRoster[p.name] || Array.from({length:daysInMo},(_,i)=>p.days[i%7]);
-    const base = { name:p.name, role:p.role, days:JSON.stringify(days), updated_by:curUser, updated_at:new Date().toISOString() };
-    const rec  = hasMonth ? {...base, month:ym} : base;
-    const key  = hasMonth ? 'name,month' : 'name';
-    const {error} = await supa.from('roster').upsert([rec], {onConflict:key});
-    if(error){ failed++; lastErr=error.message; }
-    else saved++;
+    const base = {name:p.name, role:p.role, days:JSON.stringify(days), updated_by:curUser, updated_at:new Date().toISOString()};
+
+    if(hasMonth){
+      // Try composite key first
+      const {error:e1} = await supa.from('roster').upsert([{...base, month:ym}], {onConflict:'name,month'});
+      if(e1){
+        // Constraint missing — fall back to name only
+        const {error:e2} = await supa.from('roster').upsert([base], {onConflict:'name'});
+        if(e2){ failed++; lastErr=e2.message; } else saved++;
+      } else saved++;
+    } else {
+      // No month column — name only
+      const {error} = await supa.from('roster').upsert([base], {onConflict:'name'});
+      if(error){ failed++; lastErr=error.message; } else saved++;
+    }
   }
 
-  if(failed>0) toast('Saved '+saved+'/'+ROSTER_DATA.length+' — Error: '+lastErr.substring(0,80),'err');
+  if(failed>0) toast('Saved '+saved+'/'+ROSTER_DATA.length+' failed: '+lastErr.substring(0,60),'err');
   else toast('Roster saved ✓ — '+monthLabel,'ok');
 }
 
 async function loadRosterFromDB(){
   const ym = window._rosterYM || new Date().toISOString().slice(0,7);
-  const {data, error} = await supa.from('roster').select('*').eq('month', ym);
+  // Try monthly first, fallback to all records
+  const {data, error} = await supa.from('roster').select('*');
   if(error || !data?.length) return;
   if(!window._monthRoster) window._monthRoster = {};
-  if(!window._monthRoster[ym]) window._monthRoster[ym] = {};
   data.forEach(r=>{
-    try { window._monthRoster[ym][r.name] = JSON.parse(r.days); } catch(e){}
+    const rym = r.month || ym; // use record's month or current
+    if(!window._monthRoster[rym]) window._monthRoster[rym] = {};
+    try {
+      const parsed = JSON.parse(r.days);
+      window._monthRoster[rym][r.name] = parsed;
+      // Also update ROSTER_DATA weekly pattern from saved data if no month
+      if(!r.month){
+        const idx = ROSTER_DATA.findIndex(x=>x.name===r.name);
+        if(idx>=0 && parsed.length>=7) ROSTER_DATA[idx].days = parsed.slice(0,7);
+      }
+    } catch(e){}
   });
 }
 
@@ -5259,7 +5281,7 @@ function openRaiseFlagModal(id=''){
 // NOTIFICATIONS
 // ══════════════════════════════════════
 // Track last known unread count for sound/toast trigger
-let _lastUnread = 0;
+let _lastUnread = -1;
 
 function playChime(){
   try {
