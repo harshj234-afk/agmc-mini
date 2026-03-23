@@ -967,7 +967,7 @@ const USER_DB = [
   {name:'Harsh Jain',         role:'se',    pin:'1105'},
   {name:'Mohamed Aboelella',  role:'se',    pin:'4099'},
   {name:'Nurgiza Shamshibekova',role:'se',  pin:'8680'},
-  {name:'Nourhan Walid',     role:'sa',    pin:'1105'},
+  {name:'Nourhan Walid',     role:'sa',    pin:'2241'},
   {name:'Francis de Castro Escueta',role:'sa',pin:'0687'},
   {name:'Faizan Asim',        role:'pg',    pin:'6796'},
   {name:'Ege Andac',          role:'pg',    pin:'6506'},
@@ -1505,8 +1505,8 @@ function targetBar(actual, target, label, color){
 }
 
 function rosterWidget(name){
-  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const todayIdx = new Date().getDay();
+  const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const todayIdx = (new Date().getDay()+6)%7; // Convert Sun=0 to Mon=0 based index
   const r = ROSTER_DATA.find(x=>x.name===name);
   if(!r) return '';
   const todayStatus = r.days[todayIdx];
@@ -1543,8 +1543,8 @@ dashboard(){
     const demoAvail  = (DB.demo||[]).filter(d=>d.status==='Available').length;
     const myFlags    = (DB.flags||[]).filter(f=>f.raised_by===curUser);
     // Personal roster
-    const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const todayIdx = new Date().getDay();
+    const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const todayIdx = (new Date().getDay()+6)%7; // Mon-based index
     const myRoster = ROSTER_DATA.find(r=>r.name===curUser);
     const todayStatus = myRoster ? myRoster.days[todayIdx] : '—';
     const statusColor = todayStatus==='9-6'?'var(--green)':todayStatus==='10-7'?'#34d399':todayStatus==='11-8'?'var(--amber)':todayStatus==='OFF'?'var(--red)':todayStatus==='CO'?'#f87171':'var(--dim)';
@@ -1764,7 +1764,7 @@ dashboard(){
     const otherSAs     = ['Nourhan Walid','Francis de Castro Escueta'].filter(n=>n!==curUser);
     const otherInvMTD  = otherSAs.map(n=>({
       name: n.split(' ')[0],
-      inv:  (DB.invoices||[]).filter(i=>i.created_by===n&&(i.invoice_date||'').startsWith(ym)).length,
+      inv:  (DB.invoices||[]).filter(i=>(i.created_by===n||(i.sa_processed_by&&i.sa_processed_by.includes(n)))&&(i.invoice_date||'').startsWith(ym)).length,
       reg:  (DB.registrations||[]).filter(r=>r.registered_by===n&&(r.registration_date||'').startsWith(ym)).length,
     }));
     return `
@@ -2143,8 +2143,8 @@ dashboard(){
   const maxSrc = Math.max(...topSources.map(s=>s[1]),1);
 
   // My roster
-  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const todayIdx2 = new Date().getDay();
+  const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const todayIdx2 = (new Date().getDay()+6)%7; // Mon-based index
   const myR = ROSTER_DATA.find(r=>r.name===curUser);
   const sc = s=>s==='9-6'?'var(--green)':s==='10-7'?'#34d399':s==='11-8'?'var(--amber)':s==='OFF'?'var(--red)':s==='CO'?'#f87171':s==='AL'||s==='SL'||s==='EL'?'#a78bfa':'var(--dim)';
 
@@ -2336,8 +2336,8 @@ dashboard(){
     enquiries:allEnqA.filter(e=>e.se===se).length,
   }));
   const maxBkA = Math.max(...seRatiosA.map(r=>r.bookings),1);
-  const DAYS_A=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const todayIdxA=new Date().getDay();
+  const DAYS_A=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const todayIdxA=(new Date().getDay()+6)%7; // Mon-based index
   const myRA=ROSTER_DATA.find(r=>r.name===curUser);
   const scA=s=>s==='9-6'?'var(--green)':s==='10-7'?'#34d399':s==='11-8'?'var(--amber)':s==='OFF'?'var(--red)':s==='CO'?'#f87171':s==='AL'||s==='SL'||s==='EL'?'#a78bfa':'var(--dim)';
   const stageColorsA={'Delivered':'var(--green)','Invoiced':'var(--amber)','Registered':'#a855f7','Ready for Delivery':'#22d3ee','Insured':'#60a5fa'};
@@ -2902,7 +2902,7 @@ worklog(){
   const ym = new Date().toISOString().slice(0,7);
   const monthLabel = new Date(ym+'-01').toLocaleString('en-AE',{month:'long',year:'numeric'});
   // My invoices (credited to me via sa_processed_by)
-  const myInv = (DB.invoices||[]).filter(i=>i.created_by===curUser || i.sa_processed_by===curUser);
+  const myInv = (DB.invoices||[]).filter(i=>i.created_by===curUser || (i.sa_processed_by&&i.sa_processed_by.includes(curUser)));
   const myInvMTD = myInv.filter(i=>(i.invoice_date||'').startsWith(ym));
   // My registrations (registered_by = me)
   const myReg = (DB.registrations||[]).filter(r=>r.registered_by===curUser);
